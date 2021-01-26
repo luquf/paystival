@@ -12,8 +12,8 @@ public class Paystival extends Applet {
     private static final byte INS_DEBIT_BALANCE = (byte)0x02;
     private static final byte INS_CREDIT_BALANCE = (byte)0x03;
     private static final byte INS_REQUEST_BALANCE = (byte)0x04;
-    private static final byte INS_REQUEST_CARD_INFO = (byte)0x05;
-    private static final byte INS_REQUEST_CARD_INFO_SIG = (byte)0x06;
+    private static final byte INS_REQUEST_INFO = (byte)0x05;
+    private static final byte INS_REQUEST_INFO_SIG = (byte)0x06;
 
 	/* General settings */ 
 	private static final byte PIN_MAX_TRIES = (byte)0x05;
@@ -57,6 +57,8 @@ public class Paystival extends Applet {
 			ISOException.throwIt(reason);
 		}
 
+		balance = (short)0x114; /* 276 € */
+
 		register();
 	}
 	
@@ -76,6 +78,9 @@ public class Paystival extends Applet {
     	        ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
 		}
 
+		boolean validated;
+		short a;
+
 		switch (buffer[ISO7816.OFFSET_INS]) {
 
 		case INS_VERIFY_PIN:
@@ -89,11 +94,23 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
+			//a = (short)((buffer[0]<<8)|(buffer[1]&0xFF));
+			a = (short)0x3;
+			validated = this.debit(a);
+			if (!validated) {
+				ISOException.throwIt(SW_INSUFFICIENT_FUNDS); /* Insufficient funds */	
+			}
 			break;
 
 		case INS_CREDIT_BALANCE:
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
+			}
+			a = (short)((buffer[0]<<8)|(buffer[1]&0xFF));
+			//a = (short)0x3;
+			validated = this.credit(a);
+			if (!validated) {
+				ISOException.throwIt(SW_BALANCE_LIMIT); /* Balance limit */	
 			}
 			break;
 
@@ -101,6 +118,14 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
+			short out = apdu.setOutgoing();
+			apdu.setOutgoingLength((short)2);
+			
+			buffer[0] = (byte)(this.balance>>8);
+			buffer[1] = (byte)(this.balance&0xFF);
+
+			apdu.sendBytes((short)0, (short)2);
+			
 			break;
 		
 		default:
@@ -110,11 +135,19 @@ public class Paystival extends Applet {
 	}
 
 	public boolean debit(short amount) {
+		if ((short)(this.balance - amount) < MIN_BALANCE) {
+			return false;
+		}
+		this.balance -= amount;
 		return true;
 
 	}
 
 	public boolean credit(short amount) {
+		if ((short)(MAX_BALANCE - this.balance) < amount) {
+			return false;
+		}
+		this.balance += amount;
 		return true;
 	}
 
