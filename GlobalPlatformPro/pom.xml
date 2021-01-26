@@ -1,0 +1,156 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.github.martinpaljak</groupId>
+        <artifactId>javacard</artifactId>
+        <version>18.10.04</version>
+    </parent>
+    <artifactId>globalplatformpro</artifactId>
+    <packaging>jar</packaging>
+    <name>GlobalPlatformPro</name>
+    <url>https://github.com/martinpaljak/GlobalPlatformPro</url>
+    <description>Manage applets and keys on JavaCard-s like a pro</description>
+    <licenses>
+        <license>
+            <name>LGPL-3.0</name>
+            <url>https://github.com/martinpaljak/GlobalPlatformPro/blob/master/LICENSE</url>
+            <distribution>repo</distribution>
+            <comments>Some files under MIT</comments>
+        </license>
+    </licenses>
+    <scm>
+        <url>https://github.com/martinpaljak/GlobalPlatformPro</url>
+        <developerConnection>scm:git:git@github.com:martinpaljak/globalplatformpro.git</developerConnection>
+    </scm>
+    <dependencies>
+        <!-- For PC/SC reader access -->
+        <dependency>
+            <groupId>com.github.martinpaljak</groupId>
+            <artifactId>apdu4j</artifactId>
+            <version>18.10.04</version>
+        </dependency>
+        <!-- For CAP file parsing -->
+        <dependency>
+            <groupId>com.github.martinpaljak</groupId>
+            <artifactId>capfile</artifactId>
+            <version>18.10.04</version>
+        </dependency>
+        <!-- For JSON handling -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.4</version>
+        </dependency>
+        <!-- For HTTP handling -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>${httpclient.version}</version>
+        </dependency>
+        <!-- For logging in the command line tool -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <!-- For logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <!-- For crypto in SCP03 -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bc.version}</version>
+        </dependency>
+        <!-- For command line parsing -->
+        <dependency>
+            <groupId>net.sf.jopt-simple</groupId>
+            <artifactId>jopt-simple</artifactId>
+            <version>${jopt.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <!-- For TLV handling -->
+        <dependency>
+            <groupId>com.payneteasy</groupId>
+            <artifactId>ber-tlv</artifactId>
+            <version>${bertlv.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <resources>
+            <resource>
+                <directory>target/generated-resources</directory>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <id>git-version</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>sh</executable>
+                    <outputFile>target/generated-resources/pro/javacard/gp/pro_version.txt</outputFile>
+                    <arguments>
+                        <argument>-c</argument>
+                        <argument>[ "x$GPPRO_VERSION" = "x" ] &amp;&amp; git describe --tags --always --long --dirty || echo "$GPPRO_VERSION"</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>gp</finalName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>pro.javacard.gp.GPTool</mainClass>
+                                </transformer>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/maven/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
