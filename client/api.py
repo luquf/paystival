@@ -3,7 +3,35 @@
 from smartcard.System import readers
 from config import *
 from utils import *
+import hashlib
+import struct
+from ecdsa import SigningKey, VerifyingKey
+from ecdsa.util import sigencode_der, sigdecode_der
 import sys, os, subprocess
+
+
+def get_unpad(value):
+	ret = ""
+	for i in range(0, len(value)):
+		v = value[i]
+		if v != 0:
+			ret += chr(v)
+		else:
+			return ret
+
+def array_to_hexdigest(array):
+	ret = ""
+	for v in array:
+		ret += to_2hex(v)
+	return ret
+
+def parse_user_info(info):
+	first_name = info[:20]
+	last_name = info[20:40]
+	userid = info[40:44]
+	sig = info[44:116]
+	return first_name, last_name, userid, sig
+	
 
 CLA = 0xA0
 
@@ -93,4 +121,44 @@ if sw1 == 0x90 and sw2 == 0x00:
 else:
 	print("no operation 5")
 
+
+# GET INFO
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_INFO,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	infos = parse_user_info(data)	
+else:
+	print("no operation 6")
+
 connection.disconnect()
+
+""" CARD CREATION PROCESS
+with open("../keys/sk.pem") as f:
+   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
+
+prenom = "4C656F0000000000000000000000000000000000"
+nom = "426572746F6E0000000000000000000000000000"
+userid = "DEADBEEF"
+
+data = []
+for i in range(0, len(prenom), 2):
+	data.append(int(prenom[i:i+2], 16))
+
+for i in range(0, len(nom), 2):
+	data.append(int(nom[i:i+2], 16))
+
+for i in range(0, len(userid), 2):
+	data.append(int(userid[i:i+2], 16))
+
+new_signature = sk.sign_deterministic(bytearray(data), sigencode=sigencode_der)
+"""
+
+with open("../keys/vk.pem") as f:
+   vk = VerifyingKey.from_pem(f.read())
+
+ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256, sigdecode=sigdecode_der)
+assert ok
+
+
+
+

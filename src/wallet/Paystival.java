@@ -19,8 +19,8 @@ public class Paystival extends Applet {
 	private static final byte PIN_MAX_TRIES = (byte)0x05;
 	private static final byte PIN_LENGTH = (byte)0x04;
 
-	/* Balance can be between 0 and 500 euros */
-	private static final short MAX_BALANCE = (short)0x1f4;
+	/* Balance can be between 0 and 1000 euros */
+	private static final short MAX_BALANCE = (short)0x3e8;
 	private static final short MIN_BALANCE = (short)0x0;
 	private static final byte MAX_TRANS = (byte)0x32;
 
@@ -30,9 +30,12 @@ public class Paystival extends Applet {
 	private static final short SW_INVALID_PIN = (short)0x9804;
 	private static final short SW_UNAUTH_ACCESS = (short)0x9808;
 
+	private static final short INFO_LENGTH = (short)0x80;
+
 	private OwnerPIN userPIN;
 	private short balance;
 	private static KeyPair ECKeyPair;
+	private byte information[];
 	
 	private Paystival(byte bArray[], short bOffset, byte bLength) {
 
@@ -46,7 +49,12 @@ public class Paystival extends Applet {
 		bOffset = (short)(bOffset+cLen+1);
 		byte aLen = bArray[bOffset];
 
-		userPIN.update(bArray, (short)(bOffset+1), aLen);
+
+		byte pinLen = 0x04;
+		userPIN.update(bArray, (short)(bOffset+1), pinLen);
+
+		this.information = new byte[INFO_LENGTH];
+		Util.arrayCopy(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
 
 		/* Generates EC key pair */
 		try {
@@ -58,6 +66,7 @@ public class Paystival extends Applet {
 		}
 
 		balance = (short)0x114; /* 276 € */
+		balance = (short)bArray.length;
 
 		register();
 	}
@@ -94,8 +103,7 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
-			//a = (short)((buffer[0]<<8)|(buffer[1]&0xFF));
-			a = (short)0x3;
+			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
 			validated = this.debit(a);
 			if (!validated) {
 				ISOException.throwIt(SW_INSUFFICIENT_FUNDS); /* Insufficient funds */	
@@ -106,8 +114,7 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
-			a = (short)((buffer[0]<<8)|(buffer[1]&0xFF));
-			//a = (short)0x3;
+			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
 			validated = this.credit(a);
 			if (!validated) {
 				ISOException.throwIt(SW_BALANCE_LIMIT); /* Balance limit */	
@@ -127,6 +134,12 @@ public class Paystival extends Applet {
 			apdu.sendBytes((short)0, (short)2);
 			
 			break;
+
+		case INS_REQUEST_INFO:
+			Util.arrayCopyNonAtomic(information, (short)0, buffer, (short)0, INFO_LENGTH);
+			apdu.setOutgoingAndSend((short) 0, INFO_LENGTH);
+
+			break;
 		
 		default:
 	    	ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -144,7 +157,10 @@ public class Paystival extends Applet {
 	}
 
 	public boolean credit(short amount) {
-		if ((short)(MAX_BALANCE - this.balance) < amount) {
+		if ((short)(MAX_BALANCE - this.balance) < amount){
+			return false;
+		}
+		else if (amount > MAX_TRANS) {
 			return false;
 		}
 		this.balance += amount;

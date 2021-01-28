@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project basedir="." default="wallet" name="festival virtual wallet applet">
   <!-- Applet building dependencies -->
-  <property name="JC221" value="../ext/java_card_kit-2_2_1"/>
-  <property name="JC222" value="../ext/java_card_kit-2_2_2"/>
+  <property name="JC221" value="ext/java_card_kit-2_2_1"/>
+  <property name="JC222" value="ext/java_card_kit-2_2_2"/>
     
   <!-- ant-javacard task from javacard.pro -->
-  <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="../ext/ant-javacard.jar"/>
+  <taskdef name="javacard" classname="pro.javacard.ant.JavaCard" classpath="ext/ant-javacard.jar"/>
   <!-- All included applets -->
   <target name="wallet">
     <javacard>
