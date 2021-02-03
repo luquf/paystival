@@ -1,7 +1,7 @@
 CC=gpj
 INSTALL=bin/Paystival221.cap
 DELETE=0102030405
-GPJ=java -jar /home/luquf/Documents/polytechnique/javacard/DevJavaCard/tools/GlobalPlatformPro/gp.jar
+GPJ=java -jar GlobalPlatformPro/gp.jar
 PIN=31323334
 FIRST_NAME=4C656F0000000000000000000000000000000000
 LAST_NAME=426572746F6E0000000000000000000000000000

@@ -3,35 +3,12 @@
 from smartcard.System import readers
 from config import *
 from utils import *
+from transaction import *
 import hashlib
 import struct
 from ecdsa import SigningKey, VerifyingKey
 from ecdsa.util import sigencode_der, sigdecode_der
 import sys, os, subprocess
-
-
-def get_unpad(value):
-	ret = ""
-	for i in range(0, len(value)):
-		v = value[i]
-		if v != 0:
-			ret += chr(v)
-		else:
-			return ret
-
-def array_to_hexdigest(array):
-	ret = ""
-	for v in array:
-		ret += to_2hex(v)
-	return ret
-
-def parse_user_info(info):
-	first_name = info[:20]
-	last_name = info[20:40]
-	userid = info[40:44]
-	sig = info[44:116]
-	return first_name, last_name, userid, sig
-	
 
 CLA = 0xA0
 
@@ -43,11 +20,12 @@ INS_DEBIT_BALANCE = 0x02
 INS_CREDIT_BALANCE = 0x03
 INS_REQUEST_BALANCE = 0x04
 INS_REQUEST_INFO = 0x05
-INS_REQUEST_INFO_SIG = 0x05
+INS_REQUEST_TRANS = 0x06
 
 P1 = 0x00	
 P2 = 0x00
 Le = 0x00 	
+
 
 r = readers()
 connection = r[0].createConnection()
@@ -130,35 +108,23 @@ if sw1 == 0x90 and sw2 == 0x00:
 else:
 	print("no operation 6")
 
-connection.disconnect()
-
-""" CARD CREATION PROCESS
-with open("../keys/sk.pem") as f:
-   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
-
-prenom = "4C656F0000000000000000000000000000000000"
-nom = "426572746F6E0000000000000000000000000000"
-userid = "DEADBEEF"
-
-data = []
-for i in range(0, len(prenom), 2):
-	data.append(int(prenom[i:i+2], 16))
-
-for i in range(0, len(nom), 2):
-	data.append(int(nom[i:i+2], 16))
-
-for i in range(0, len(userid), 2):
-	data.append(int(userid[i:i+2], 16))
-
-new_signature = sk.sign_deterministic(bytearray(data), sigencode=sigencode_der)
-"""
-
+# VERIFY THE INFORMATION SIGNATURE
 with open("../keys/vk.pem") as f:
    vk = VerifyingKey.from_pem(f.read())
 
 ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256, sigdecode=sigdecode_der)
 assert ok
 
+# REQUEST TRANS
+for i in range(0, 1000):
+	Le = 0x2
+	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_TRANS,P1,P2,Le]+[(i>>8)&0xFF, i&0xFF])
+	if sw1 == 0x90 and sw2 == 0x00:
+		t = Transaction(data)
+		print(t)
+		print("Verifying transaction =>", t.verify_transaction())
+	else:
+		break
 
-
+connection.disconnect()
 
