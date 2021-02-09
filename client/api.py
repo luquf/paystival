@@ -8,9 +8,10 @@ import hashlib
 import struct
 from ecdsa import SigningKey, VerifyingKey
 from ecdsa.util import sigencode_der, sigdecode_der
+from Crypto.PublicKey.RSA import construct
 import sys, os, subprocess
 
-CLA = 0xA0
+pubkey = None
 
 """
 Instructions available on the card
@@ -21,7 +22,11 @@ INS_CREDIT_BALANCE = 0x03
 INS_REQUEST_BALANCE = 0x04
 INS_REQUEST_INFO = 0x05
 INS_REQUEST_TRANS = 0x06
+INS_REQUEST_PUB_KEY = 0x07
+INS_REQUEST_CHALLENGE = 0x08
+INS_REQUEST_TRANSACTION = 0x09
 
+CLA = 0xA0
 P1 = 0x00	
 P2 = 0x00
 Le = 0x00 	
@@ -125,6 +130,26 @@ for i in range(0, 1000):
 		print("Verifying transaction =>", t.verify_transaction())
 	else:
 		break
+
+
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_PUB_KEY,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	exp_len, exp, mod_len, mod = get_card_public_key(data)
+	pubkey = construct((mod, exp))	
+else:
+	print("no operation 7")
+
+
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	enc = pubkey.encrypt(bytes(data), None)
+	enc = [x for x in enc]
+	print(enc)
+else:
+	print_ret_codes(sw1, sw2)
+	print("no operation 8")
 
 connection.disconnect()
 

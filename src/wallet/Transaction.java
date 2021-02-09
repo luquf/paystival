@@ -30,8 +30,8 @@ public class Transaction {
 			buf[0] = (byte)((amount >> 8) & 0xFF);
 			buf[1] = (byte)(amount & 0xFF);
 			buf[2] = type;
-			Util.arrayCopy(from, (short)0, buf, (short)3, (short)4);
-			Util.arrayCopy(to, (short)0, buf, (short)7, (short)4);
+			Util.arrayCopyNonAtomic(from, (short)0, buf, (short)3, (short)4);
+			Util.arrayCopyNonAtomic(to, (short)0, buf, (short)7, (short)4);
 			ctx.doFinal(buf, (short)0, (short)11, checkSumHash, (short)0);
 		} catch (Exception e) {}
 	}
@@ -50,8 +50,8 @@ public class Transaction {
 			buf[0] = (byte)((amount >> 8) & 0xFF);
 			buf[1] = (byte)(amount & 0xFF);
 			buf[2] = type;
-			Util.arrayCopy(from, (short)0, buf, (short)3, (short)4);
-			Util.arrayCopy(to, (short)0, buf, (short)7, (short)4);
+			Util.arrayCopyNonAtomic(from, (short)0, buf, (short)3, (short)4);
+			Util.arrayCopyNonAtomic(to, (short)0, buf, (short)7, (short)4);
 			ctx.doFinal(buf, (short)0, (short)11, checkSumHash, (short)0);
 		} catch (Exception e) {}
 	}
@@ -61,9 +61,9 @@ public class Transaction {
 		buf[0] = (byte)((amount >> 8) & 0xFF);
 		buf[1] = (byte)(amount & 0xFF);
 		buf[2] = type;
-		Util.arrayCopy(from, (short)0, buf, (short)3, (short)4);
-		Util.arrayCopy(to, (short)0, buf, (short)7, (short)4);
-		Util.arrayCopy(checkSumHash, (short)0, buf, (short)11, (short)20);
+		Util.arrayCopyNonAtomic(from, (short)0, buf, (short)3, (short)4);
+		Util.arrayCopyNonAtomic(to, (short)0, buf, (short)7, (short)4);
+		Util.arrayCopyNonAtomic(checkSumHash, (short)0, buf, (short)11, (short)20);
 		return buf;	
 	}
 }

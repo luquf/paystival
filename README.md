@@ -6,7 +6,7 @@ TODO:
 - pin authentication .......................... DONE
 - card creation ............................... TO BE FINISHED
 - card info + signature ....................... DONE
-- on card ECC key pair generation ............. TODO
+- on card RSA key pair generation ............. DONE
 - debit machine authentication challenge ...... TODO
 - client GUI .................................. TO BE FINISHED
 - admin apdu .................................. TODO

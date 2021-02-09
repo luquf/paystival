@@ -8,6 +8,7 @@ colorama==0.4.3
 contextlib2==0.6.0
 distlib==0.3.0
 distro==1.4.0
+ecdsa==0.16.1
 html5lib==1.0.1
 idna==2.8
 ipaddr==2.2.0
@@ -18,6 +19,7 @@ pep517==0.8.2
 persistent==4.6.4
 progress==1.5
 pycparser==2.20
+pycrypto==2.6.1
 pyparsing==2.4.6
 PyQt5==5.15.1
 PyQt5-sip==12.8.1

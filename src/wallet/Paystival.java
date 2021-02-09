@@ -16,6 +16,9 @@ public class Paystival extends Applet {
 	private static final byte INS_REQUEST_BALANCE = (byte)0x04;
 	private static final byte INS_REQUEST_INFO = (byte)0x05;
 	private static final byte INS_REQUEST_TRANS = (byte)0x06;
+	private static final byte INS_REQUEST_PUB_KEY = (byte)0x07;
+	private static final byte INS_REQUEST_CHALLENGE = (byte)0x08;
+	private static final byte INS_REQUEST_TRANSACTION = (byte)0x09;
 	
 	/* General settings */ 
 	private static final byte PIN_MAX_TRIES = (byte)0x05;
@@ -32,13 +35,20 @@ public class Paystival extends Applet {
 	private static final short SW_INVALID_PIN = (short)0x9804;
 	private static final short SW_UNAUTH_ACCESS = (short)0x9808;
 	private static final short SW_INVALID_TRANS_ID = (short)0x9902;
+	private static final short SW_KEY_ALREADY_REQUESTED = (short)0x9903;
 	
 	private static final short INFO_LENGTH = (short)0x80;
+
+	private byte key_requested = 0;
+	private byte[] challenge;
 	
 	private OwnerPIN userPIN;
 	private short balance;
-	private static KeyPair ECKeyPair;
 	private byte information[];
+	private RSAPrivateCrtKey rsaPrivateKey;
+	private RSAPublicKey rsaPublicKey;
+	private KeyPair kp;
+
 
 	/* Logging of the transactions on the card */
 	private TransactionManager manager;
@@ -61,14 +71,18 @@ public class Paystival extends Applet {
 	
 		byte pinLen = 0x04;
 		userPIN.update(bArray, (short)(bOffset+1), pinLen);
+
+		this.challenge = new byte[10];
 	
 		this.information = new byte[INFO_LENGTH];
-		Util.arrayCopy(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
+		Util.arrayCopyNonAtomic(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
 	
-		/* Generates EC key pair */
+		/* Generates asymmetrical key pair (RSA 512 bits) */
 		try {
-			ECKeyPair = new KeyPair(KeyPair.ALG_EC_F2M, KeyBuilder.LENGTH_EC_F2M_193);
-			ECKeyPair.genKeyPair();
+			this.kp = new KeyPair(KeyPair.ALG_RSA_CRT, (short)512);
+			kp.genKeyPair();
+			rsaPrivateKey = (RSAPrivateCrtKey)kp.getPrivate();
+			rsaPublicKey = (RSAPublicKey)kp.getPublic();	
 		} catch (CryptoException c) {
 			short reason = c.getReason();
 			ISOException.throwIt(reason);
@@ -118,7 +132,7 @@ public class Paystival extends Applet {
 			} else {
 				/* Log the transcation */
 				byte[] from = new byte[4];
-				Util.arrayCopy(information, (short)40, from, (short)0, (short)4);
+				Util.arrayCopyNonAtomic(information, (short)40, from, (short)0, (short)4);
 				Transaction td = new Transaction(a, from, new byte[]{(byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff}, Transaction.DEBIT);
 				manager.storeTransaction(td);
 			}
@@ -135,7 +149,7 @@ public class Paystival extends Applet {
 			} else {
 				/* Log the transcation */
 				byte[] to = new byte[4];
-				Util.arrayCopy(information, (short)40, to, (short)0, (short)4);
+				Util.arrayCopyNonAtomic(information, (short)40, to, (short)0, (short)4);
 				Transaction td = new Transaction(a, to, Transaction.CREDIT);
 				manager.storeTransaction(td);
 			}
@@ -170,6 +184,24 @@ public class Paystival extends Applet {
 			Util.arrayCopyNonAtomic(infos, (short)0, buffer, (short)0, (short)infos.length);
 			apdu.setOutgoingAndSend((short) 0, (short)infos.length);
 			break;
+
+		case INS_REQUEST_PUB_KEY:
+			if (key_requested == 0) {
+				short offset = this.serializeKey(buffer, (short)0);
+				apdu.setOutgoingAndSend((short) 0, offset);
+				key_requested = 1;
+			} else {
+				ISOException.throwIt(SW_KEY_ALREADY_REQUESTED); /* Key already requested */	
+			}
+			break;
+
+		case INS_REQUEST_CHALLENGE:
+			RandomData random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
+			random.setSeed(this.challenge, (short)0, (short)10);
+			random.generateData(this.challenge, (short)0, (short)10);
+			Util.arrayCopyNonAtomic(this.challenge,(short)0, buffer, (short)0, (short)10);
+			apdu.setOutgoingAndSend((short)0, (short)10);
+			break;
 		
 		default:
 	    	ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
@@ -200,6 +232,14 @@ public class Paystival extends Applet {
 	
 	public short requestBalance() {
 		return this.balance;
+	}
+
+	public final short serializeKey(byte[] buffer, short offset) {
+		short expLen = this.rsaPublicKey.getExponent(buffer, (short) (offset + 2));
+		Util.setShort(buffer, offset, expLen);
+		short modLen = this.rsaPublicKey.getModulus(buffer, (short) (offset + 4 + expLen));
+		Util.setShort(buffer, (short)(offset + 2 + expLen), modLen);
+		return (short) (4 + expLen + modLen);
 	}
 	
 }

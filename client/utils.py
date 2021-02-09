@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 
+def get_card_public_key(data):
+	exp_len = (data[0]<<8)|(data[1]&0xFF)
+	exp = 0
+	for i in range(2, exp_len+2):
+		exp = (exp<<8)|(data[i]&0xff)
+	mod_len = (data[exp_len+2]<<8)|(data[exp_len+3]&0xFF)
+	mod = 0
+	for i in range(exp_len+4, exp_len+mod_len+4):
+		mod = (mod<<8)|(data[i]&0xff)
+	return exp_len, exp, mod_len, mod
+
 def to2hex(val):
 	fmt = "%0.2x" % val
 	return fmt.format(val)
@@ -41,6 +52,12 @@ def hex2str(h):
 	ret = ""
 	for i in range(0, len(h), 2):
 		ret += chr(int(h[i:i+2], 16))
+	return ret
+
+def hex_to_array(val):
+	ret = []
+	for i in range(0, len(val), 2):
+		ret.append(int(val[i:i+2], 16))
 	return ret
 
 def parse_user_info(info):
