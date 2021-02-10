@@ -9,28 +9,8 @@ import struct
 from ecdsa import SigningKey, VerifyingKey
 from ecdsa.util import sigencode_der, sigdecode_der
 from Crypto.PublicKey.RSA import construct
+from sqlite3 import *
 import sys, os, subprocess
-
-pubkey = None
-
-"""
-Instructions available on the card
-"""
-INS_VERIFY_PIN = 0x01
-INS_DEBIT_BALANCE = 0x02
-INS_CREDIT_BALANCE = 0x03
-INS_REQUEST_BALANCE = 0x04
-INS_REQUEST_INFO = 0x05
-INS_REQUEST_TRANS = 0x06
-INS_REQUEST_PUB_KEY = 0x07
-INS_REQUEST_CHALLENGE = 0x08
-INS_REQUEST_TRANSACTION = 0x09
-
-CLA = 0xA0
-P1 = 0x00	
-P2 = 0x00
-Le = 0x00 	
-
 
 r = readers()
 connection = r[0].createConnection()
@@ -64,47 +44,6 @@ if sw1 == 0x90 and sw2 == 0x00:
 else:
 	print("no operation 1")
 
-
-# CREDIT BALANCE
-Le = 0x2
-data, sw1, sw2 = connection.transmit([CLA,INS_CREDIT_BALANCE,P1,P2,Le]+[0x00, 0x01])
-if sw1 == 0x90 and sw2 == 0x00:
-	print("credit done")
-else:
-	print("no operation 2")
-	print_ret_codes(sw1, sw2)
-
-# GET BALANCE
-Le = 0x0
-data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_BALANCE,P1,P2,Le])
-if sw1 == 0x90 and sw2 == 0x00:
-	amount = data[0]
-	amount = (amount << 8) | data[1]
-	print(f"amount: {amount}€")
-else:
-	print("no operation 3")
-
-
-# DEBIT BALANCE
-Le = 0x2
-data, sw1, sw2 = connection.transmit([CLA,INS_DEBIT_BALANCE,P1,P2,Le]+[0x00, 0x02])
-if sw1 == 0x90 and sw2 == 0x00:
-	print("debit done")
-else:
-	print("no operation 4")
-
-
-# GET BALANCE
-Le = 0x0
-data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_BALANCE,P1,P2,Le])
-if sw1 == 0x90 and sw2 == 0x00:
-	amount = data[0]
-	amount = (amount << 8) | data[1]
-	print(f"amount: {amount}€")
-else:
-	print("no operation 5")
-
-
 # GET INFO
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_INFO,P1,P2,Le])
@@ -117,39 +56,38 @@ else:
 with open("../keys/vk.pem") as f:
    vk = VerifyingKey.from_pem(f.read())
 
-ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256, sigdecode=sigdecode_der)
+ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256)
 assert ok
 
-# REQUEST TRANS
-for i in range(0, 1000):
-	Le = 0x2
-	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_TRANS,P1,P2,Le]+[(i>>8)&0xFF, i&0xFF])
-	if sw1 == 0x90 and sw2 == 0x00:
-		t = Transaction(data)
-		print(t)
-		print("Verifying transaction =>", t.verify_transaction())
-	else:
-		break
 
 
-Le = 0x0
-data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_PUB_KEY,P1,P2,Le])
-if sw1 == 0x90 and sw2 == 0x00:
-	exp_len, exp, mod_len, mod = get_card_public_key(data)
-	pubkey = construct((mod, exp))	
-else:
-	print("no operation 7")
-
-
+# COMPLETE CHALLENGE
+enc = None
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
 if sw1 == 0x90 and sw2 == 0x00:
-	enc = pubkey.encrypt(bytes(data), None)
+	conn = connect("../storage/pk_infra.sqlite")	
+	cur = conn.cursor()
+	userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
+	cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))
+	r = cur.fetchall()
+	cur.close()
+	conn.close()
+	pubkey = construct((r[0][0], int(r[0][1], 16)))
+	enc = pubkey.encrypt(bytes(data), None)[0]
 	enc = [x for x in enc]
-	print(enc)
 else:
 	print_ret_codes(sw1, sw2)
 	print("no operation 8")
+
+
+Le = 0x42
+data, sw1, sw2 = connection.transmit([CLA,INS_CREDIT_BALANCE,P1,P2,Le]+[0x0, 0x02]+enc)
+if sw1 == 0x90 and sw2 == 0x00:
+	print("test debit/credit done")
+else:
+	print_ret_codes(sw1, sw2)
+	print("no operation 9")
 
 connection.disconnect()
 

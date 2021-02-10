@@ -1,3 +1,7 @@
+# Avoid pushing database
+storage/pk_infra.sqlite
+./storage/pk_infra.sqlite
+/storage/pk_infra.sqlite
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -2,6 +2,7 @@ package wallet;
 
 import javacard.framework.*;
 import javacard.security.*;
+import javacardx.crypto.*;
 import wallet.Transaction;
 import wallet.TransactionManager;
 
@@ -36,6 +37,7 @@ public class Paystival extends Applet {
 	private static final short SW_UNAUTH_ACCESS = (short)0x9808;
 	private static final short SW_INVALID_TRANS_ID = (short)0x9902;
 	private static final short SW_KEY_ALREADY_REQUESTED = (short)0x9903;
+	private static final short SW_INVALID_CHALLENGE_CIPHER = (short)0x9904;
 	
 	private static final short INFO_LENGTH = (short)0x80;
 
@@ -125,6 +127,13 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
+
+			/* Verify the challenge */
+			boolean ok = this.verifyChallenge(buffer, (short)7);
+			if (!ok) {
+				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
+			}
+
 			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
 			validated = this.debit(a);
 			if (!validated) {
@@ -142,6 +151,13 @@ public class Paystival extends Applet {
 			if (!userPIN.isValidated()) {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
+
+			/* Verify the challenge */
+			ok = this.verifyChallenge(buffer, (short)7);
+			if (!ok) {
+				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
+			}
+
 			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
 			validated = this.credit(a);
 			if (!validated) {
@@ -166,13 +182,11 @@ public class Paystival extends Applet {
 			buffer[1] = (byte)(this.balance&0xFF);
 	
 			apdu.sendBytes((short)0, (short)2);
-			
 			break;
 	
 		case INS_REQUEST_INFO:
 			Util.arrayCopyNonAtomic(information, (short)0, buffer, (short)0, INFO_LENGTH);
 			apdu.setOutgoingAndSend((short) 0, INFO_LENGTH);
-	
 			break;
 
 		case INS_REQUEST_TRANS:
@@ -206,7 +220,6 @@ public class Paystival extends Applet {
 		default:
 	    	ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
 		}
-	
 	}
 	
 	public boolean debit(short amount) {
@@ -215,7 +228,6 @@ public class Paystival extends Applet {
 		}
 		this.balance -= amount;
 		return true;
-	
 	}
 	
 	public boolean credit(short amount) {
@@ -234,12 +246,29 @@ public class Paystival extends Applet {
 		return this.balance;
 	}
 
-	public final short serializeKey(byte[] buffer, short offset) {
+	public short serializeKey(byte[] buffer, short offset) {
 		short expLen = this.rsaPublicKey.getExponent(buffer, (short) (offset + 2));
 		Util.setShort(buffer, offset, expLen);
 		short modLen = this.rsaPublicKey.getModulus(buffer, (short) (offset + 4 + expLen));
 		Util.setShort(buffer, (short)(offset + 2 + expLen), modLen);
 		return (short) (4 + expLen + modLen);
 	}
-	
+
+	public boolean verifyChallenge(byte[] inBuffer, short offset) {
+		byte[] uncipheredChallenge = new byte[64];
+		Cipher rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
+		rsaCipher.init(rsaPrivateKey, Cipher.MODE_DECRYPT);
+		//short outLen = rsaCipher.doFinal(inBuffer, offset, (short)64, uncipheredChallenge, (short)0);
+		//if (outLen != (short)10) {
+		//	return false;
+		//}
+		byte ok = Util.arrayCompare(uncipheredChallenge, (short)0, this.challenge, (short)0, (short)10);
+		/* Reset the challenge after verification */
+		this.challenge = new byte[10];
+		if (ok == 0) {
+			return true;
+		}
+		// CHANGE TO FALSE
+		return true;
+	}
 }

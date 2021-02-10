@@ -64,5 +64,5 @@ def parse_user_info(info):
 	first_name = info[:20]
 	last_name = info[20:40]
 	userid = info[40:44]
-	sig = info[44:116]
+	sig = info[44:108]
 	return first_name, last_name, userid, sig

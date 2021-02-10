@@ -4,11 +4,10 @@ This project aims to implement a cashless payment system for festivals.
 
 TODO:
 - pin authentication .......................... DONE
-- card creation ............................... TO BE FINISHED
+- card creation ............................... DONE
 - card info + signature ....................... DONE
 - on card RSA key pair generation ............. DONE
-- debit machine authentication challenge ...... TODO
+- debit machine authentication challenge ...... DONE (CRYPTO NOT WORKING YET)
 - client GUI .................................. TO BE FINISHED
-- admin apdu .................................. TODO
-- transcation logging ......................... DONE (TIMESTAMP TO ADD TO OBJECT)
+- transcation logging ......................... DONE (TIMESTAMP TO ADD TO OBJECT + SIGN INSTEAD OF HASH)
 - credit card to card ......................... TODO
