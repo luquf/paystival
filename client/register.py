@@ -46,6 +46,7 @@ connection.connect()
 # GET PUBLIC KEY AND STORE IT IN DATABASE
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_PUB_KEY,P1,P2,Le])
+#print(data)
 if sw1 == 0x90 and sw2 == 0x00:
 	pkey = get_card_public_key(data)
 	conn = connect("../storage/pk_infra.sqlite")

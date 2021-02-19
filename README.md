@@ -7,7 +7,7 @@ TODO:
 - card creation ............................... DONE
 - card info + signature ....................... DONE
 - on card RSA key pair generation ............. DONE
-- debit machine authentication challenge ...... DONE (CRYPTO NOT WORKING YET)
+- debit machine authentication challenge ...... DONE (GO TO ECC IF POSSIBLE)
 - client GUI .................................. TO BE FINISHED
 - transcation logging ......................... DONE (TIMESTAMP TO ADD TO OBJECT + SIGN INSTEAD OF HASH)
 - credit card to card ......................... TODO

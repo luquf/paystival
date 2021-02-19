@@ -2,6 +2,9 @@
 
 from sqlite3 import *
 
+with open("storage/pk_infra.sqlite", "w") as f:
+	pass
+
 conn = connect("storage/pk_infra.sqlite")
 cur = conn.cursor()
 

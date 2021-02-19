@@ -40,6 +40,7 @@ public class Paystival extends Applet {
 	private static final short SW_INVALID_CHALLENGE_CIPHER = (short)0x9904;
 	
 	private static final short INFO_LENGTH = (short)0x80;
+	private static final short CHALL_LENGTH = (short)0x40;
 
 	private byte key_requested = 0;
 	private byte[] challenge;
@@ -74,10 +75,10 @@ public class Paystival extends Applet {
 		byte pinLen = 0x04;
 		userPIN.update(bArray, (short)(bOffset+1), pinLen);
 
-		this.challenge = new byte[10];
+		this.challenge = new byte[CHALL_LENGTH];
 	
 		this.information = new byte[INFO_LENGTH];
-		Util.arrayCopyNonAtomic(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
+		Util.arrayCopy(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
 	
 		/* Generates asymmetrical key pair (RSA 512 bits) */
 		try {
@@ -129,7 +130,7 @@ public class Paystival extends Applet {
 			}
 
 			/* Verify the challenge */
-			boolean ok = this.verifyChallenge(buffer, (short)7);
+			boolean ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
 			if (!ok) {
 				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
 			}
@@ -141,7 +142,7 @@ public class Paystival extends Applet {
 			} else {
 				/* Log the transcation */
 				byte[] from = new byte[4];
-				Util.arrayCopyNonAtomic(information, (short)40, from, (short)0, (short)4);
+				Util.arrayCopy(information, (short)40, from, (short)0, (short)4);
 				Transaction td = new Transaction(a, from, new byte[]{(byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff}, Transaction.DEBIT);
 				manager.storeTransaction(td);
 			}
@@ -153,7 +154,7 @@ public class Paystival extends Applet {
 			}
 
 			/* Verify the challenge */
-			ok = this.verifyChallenge(buffer, (short)7);
+			ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
 			if (!ok) {
 				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
 			}
@@ -165,7 +166,7 @@ public class Paystival extends Applet {
 			} else {
 				/* Log the transcation */
 				byte[] to = new byte[4];
-				Util.arrayCopyNonAtomic(information, (short)40, to, (short)0, (short)4);
+				Util.arrayCopy(information, (short)40, to, (short)0, (short)4);
 				Transaction td = new Transaction(a, to, Transaction.CREDIT);
 				manager.storeTransaction(td);
 			}
@@ -185,7 +186,7 @@ public class Paystival extends Applet {
 			break;
 	
 		case INS_REQUEST_INFO:
-			Util.arrayCopyNonAtomic(information, (short)0, buffer, (short)0, INFO_LENGTH);
+			Util.arrayCopy(information, (short)0, buffer, (short)0, INFO_LENGTH);
 			apdu.setOutgoingAndSend((short) 0, INFO_LENGTH);
 			break;
 
@@ -195,13 +196,13 @@ public class Paystival extends Applet {
 			if (t == null)
 				ISOException.throwIt(SW_INVALID_TRANS_ID); /* Invalid transaction ID */	
 			byte[] infos = t.getTransactionData();
-			Util.arrayCopyNonAtomic(infos, (short)0, buffer, (short)0, (short)infos.length);
+			Util.arrayCopy(infos, (short)0, buffer, (short)0, (short)infos.length);
 			apdu.setOutgoingAndSend((short) 0, (short)infos.length);
 			break;
 
 		case INS_REQUEST_PUB_KEY:
 			if (key_requested == 0) {
-				short offset = this.serializeKey(buffer, (short)0);
+				short offset = this.serializeKey(this.rsaPublicKey, buffer, (short)0);
 				apdu.setOutgoingAndSend((short) 0, offset);
 				key_requested = 1;
 			} else {
@@ -211,10 +212,10 @@ public class Paystival extends Applet {
 
 		case INS_REQUEST_CHALLENGE:
 			RandomData random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
-			random.setSeed(this.challenge, (short)0, (short)10);
-			random.generateData(this.challenge, (short)0, (short)10);
-			Util.arrayCopyNonAtomic(this.challenge,(short)0, buffer, (short)0, (short)10);
-			apdu.setOutgoingAndSend((short)0, (short)10);
+			random.setSeed(this.challenge, (short)0, CHALL_LENGTH);
+			random.generateData(this.challenge, (short)0, CHALL_LENGTH);
+			Util.arrayCopyNonAtomic(this.challenge,(short)0, buffer, (short)0, CHALL_LENGTH);
+			apdu.setOutgoingAndSend((short)0, CHALL_LENGTH);
 			break;
 		
 		default:
@@ -246,11 +247,11 @@ public class Paystival extends Applet {
 		return this.balance;
 	}
 
-	public short serializeKey(byte[] buffer, short offset) {
-		short expLen = this.rsaPublicKey.getExponent(buffer, (short) (offset + 2));
+	private final short serializeKey(RSAPublicKey key, byte[] buffer, short offset) {
+		short expLen = key.getExponent(buffer, (short) (offset + 2));
 		Util.setShort(buffer, offset, expLen);
-		short modLen = this.rsaPublicKey.getModulus(buffer, (short) (offset + 4 + expLen));
-		Util.setShort(buffer, (short)(offset + 2 + expLen), modLen);
+		short modLen = key.getModulus(buffer, (short) (offset + 4 + expLen));
+		Util.setShort(buffer, (short) (offset + 2 + expLen), modLen);
 		return (short) (4 + expLen + modLen);
 	}
 
@@ -258,17 +259,16 @@ public class Paystival extends Applet {
 		byte[] uncipheredChallenge = new byte[64];
 		Cipher rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 		rsaCipher.init(rsaPrivateKey, Cipher.MODE_DECRYPT);
-		//short outLen = rsaCipher.doFinal(inBuffer, offset, (short)64, uncipheredChallenge, (short)0);
-		//if (outLen != (short)10) {
-		//	return false;
-		//}
-		byte ok = Util.arrayCompare(uncipheredChallenge, (short)0, this.challenge, (short)0, (short)10);
+
+		/* Perform encryption */
+		short outLen = rsaCipher.doFinal(inBuffer, offset, (short)64, uncipheredChallenge, (short)0);
+		byte ok = Util.arrayCompare(uncipheredChallenge, (short)0, this.challenge, (short)0, CHALL_LENGTH);
+
 		/* Reset the challenge after verification */
-		this.challenge = new byte[10];
+		this.challenge = new byte[CHALL_LENGTH];
 		if (ok == 0) {
 			return true;
 		}
-		// CHANGE TO FALSE
-		return true;
+		return false;
 	}
 }

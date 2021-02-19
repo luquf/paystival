@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from api import *
 
 
 class MainWindow(QMainWindow):
@@ -22,9 +23,7 @@ class MainWindow(QMainWindow):
 		self.main_widget = PINViewWidget(self, nextv)
 		self.setCentralWidget(self.main_widget)
 	
-	def balance_view(self):
-		# TODO: get amount from api
-		amount = 120.0;
+	def balance_view(self, amount):
 		self.main_widget = BalanceViewWidget(self, amount)
 		self.setCentralWidget(self.main_widget)
 
@@ -317,10 +316,11 @@ class PINViewWidget(QWidget):
 			self.parent.button_view()
 
 	def validate_pin(self):
-		# TODO: call backend API
-		if self.pin == "9999":
+		# Call backend API to validate the PIN
+		amount = ask_balance_with_pin([ord(c) for c in self.pin])
+		if amount != -1:
 			if self.nextv == "balance":
-				self.parent.balance_view()
+				self.parent.balance_view(amount)
 			elif self.nextv == "charge":
 				self.parent.charge_view()
 		else:

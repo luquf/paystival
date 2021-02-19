@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-def get_card_public_key(data):
+def get_card_public_key(data, endian="big"):
 	exp_len = (data[0]<<8)|(data[1]&0xFF)
-	exp = 0
-	for i in range(2, exp_len+2):
-		exp = (exp<<8)|(data[i]&0xff)
+	exp = int.from_bytes(data[2:exp_len+2], endian)
 	mod_len = (data[exp_len+2]<<8)|(data[exp_len+3]&0xFF)
-	mod = 0
-	for i in range(exp_len+4, exp_len+mod_len+4):
-		mod = (mod<<8)|(data[i]&0xff)
+	mod = int.from_bytes(data[exp_len+4:exp_len+mod_len+4], endian)
 	return exp_len, exp, mod_len, mod
 
 def to2hex(val):
