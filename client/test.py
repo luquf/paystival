@@ -93,5 +93,58 @@ else:
 	print_ret_codes(sw1, sw2)
 	print("no operation 9")
 
+# GET BALANCE
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_BALANCE,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	amount = data[0]
+	amount = (amount << 8) | data[1]
+	print(f"amount: {amount}€")
+else:
+	print("no operation 1")
+
+
+# COMPLETE CHALLENGE
+enc = None
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	conn = connect("../storage/pk_infra.sqlite")	
+	cur = conn.cursor()
+	userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
+	cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))
+	r = cur.fetchall()
+	cur.close()
+	conn.close()
+	#print("public key is", r[0][0], int(r[0][1], 10))
+	pubkey = construct((int(r[0][1], 10), r[0][0]))
+	num = int.from_bytes(data, "big")
+	#print("challenge is", num)
+	enc = pubkey.encrypt(num, 0)[0]
+	enc = list(enc.to_bytes(64, "big"))
+	#print("encrypted challenge is", enc)
+else:
+	print_ret_codes(sw1, sw2)
+	print("no operation 8")
+
+
+Le = 0x42
+data, sw1, sw2 = connection.transmit([CLA,INS_DEBIT_BALANCE,P1,P2,Le]+[0x0, 0x02]+enc)
+if sw1 == 0x90 and sw2 == 0x00:
+	print("test debit done")
+else:
+	print_ret_codes(sw1, sw2)
+	print("no operation 9")
+
+# GET BALANCE
+Le = 0x0
+data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_BALANCE,P1,P2,Le])
+if sw1 == 0x90 and sw2 == 0x00:
+	amount = data[0]
+	amount = (amount << 8) | data[1]
+	print(f"amount: {amount}€")
+else:
+	print("no operation 1")
+
 connection.disconnect()
 

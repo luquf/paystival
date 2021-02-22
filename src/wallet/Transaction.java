@@ -2,6 +2,7 @@ package wallet;
 
 import javacard.security.MessageDigest;
 import javacard.framework.*;
+import javacard.security.*;
 
 public class Transaction {
 	
@@ -16,7 +17,7 @@ public class Transaction {
 
 	private MessageDigest ctx;
 
-	public Transaction(short amount, byte[] to, byte type) {
+	public Transaction(short amount, byte[] to, byte type, RSAPrivateCrtKey sk) {
 		this.amount = amount;
 		this.type = type;
 		this.from = new byte[4];
@@ -36,7 +37,7 @@ public class Transaction {
 		} catch (Exception e) {}
 	}
 
-	public Transaction(short amount, byte[] from, byte[] to, byte type) {
+	public Transaction(short amount, byte[] from, byte[] to, byte type, RSAPrivateCrtKey sk) {
 		this.amount = amount;
 		this.type = type;
 		this.from = from;

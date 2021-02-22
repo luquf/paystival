@@ -129,13 +129,13 @@ public class Paystival extends Applet {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
 
-			/* Verify the challenge */
+			/* Verify the challenge, TODO: check challenge has been asked */
 			boolean ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
 			if (!ok) {
 				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
 			}
 
-			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
+			a = (short)((buffer[ISO7816.OFFSET_CDATA]<<8)|(buffer[ISO7816.OFFSET_CDATA+1]&0xFF));
 			validated = this.debit(a);
 			if (!validated) {
 				ISOException.throwIt(SW_INSUFFICIENT_FUNDS); /* Insufficient funds */	
@@ -143,7 +143,7 @@ public class Paystival extends Applet {
 				/* Log the transcation */
 				byte[] from = new byte[4];
 				Util.arrayCopy(information, (short)40, from, (short)0, (short)4);
-				Transaction td = new Transaction(a, from, new byte[]{(byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff}, Transaction.DEBIT);
+				Transaction td = new Transaction(a, from, new byte[]{(byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff}, Transaction.DEBIT, this.rsaPrivateKey);
 				manager.storeTransaction(td);
 			}
 			break;
@@ -153,13 +153,13 @@ public class Paystival extends Applet {
 				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
 			}
 
-			/* Verify the challenge */
+			/* Verify the challenge, TODO: check challenge has been asked */
 			ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
 			if (!ok) {
 				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
 			}
 
-			a = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
+			a = (short)((buffer[ISO7816.OFFSET_CDATA]<<8)|(buffer[ISO7816.OFFSET_CDATA+1]&0xFF));
 			validated = this.credit(a);
 			if (!validated) {
 				ISOException.throwIt(SW_BALANCE_LIMIT); /* Balance limit */	
@@ -167,7 +167,7 @@ public class Paystival extends Applet {
 				/* Log the transcation */
 				byte[] to = new byte[4];
 				Util.arrayCopy(information, (short)40, to, (short)0, (short)4);
-				Transaction td = new Transaction(a, to, Transaction.CREDIT);
+				Transaction td = new Transaction(a, to, Transaction.CREDIT, this.rsaPrivateKey);
 				manager.storeTransaction(td);
 			}
 			break;
@@ -191,7 +191,7 @@ public class Paystival extends Applet {
 			break;
 
 		case INS_REQUEST_TRANS:
-			short tid = (short)((buffer[5]<<8)|(buffer[6]&0xFF));
+			short tid = (short)((buffer[ISO7816.OFFSET_CDATA]<<8)|(buffer[ISO7816.OFFSET_CDATA+1]&0xFF));
 			Transaction t = manager.getTransaction(tid);
 			if (t == null)
 				ISOException.throwIt(SW_INVALID_TRANS_ID); /* Invalid transaction ID */	
@@ -202,7 +202,7 @@ public class Paystival extends Applet {
 
 		case INS_REQUEST_PUB_KEY:
 			if (key_requested == 0) {
-				short offset = this.serializeKey(this.rsaPublicKey, buffer, (short)0);
+				short offset = this.serializeKey(buffer, (short)0);
 				apdu.setOutgoingAndSend((short) 0, offset);
 				key_requested = 1;
 			} else {
@@ -247,10 +247,10 @@ public class Paystival extends Applet {
 		return this.balance;
 	}
 
-	private final short serializeKey(RSAPublicKey key, byte[] buffer, short offset) {
-		short expLen = key.getExponent(buffer, (short) (offset + 2));
+	private final short serializeKey(byte[] buffer, short offset) {
+		short expLen = this.rsaPublicKey.getExponent(buffer, (short) (offset + 2));
 		Util.setShort(buffer, offset, expLen);
-		short modLen = key.getModulus(buffer, (short) (offset + 4 + expLen));
+		short modLen = this.rsaPublicKey.getModulus(buffer, (short) (offset + 4 + expLen));
 		Util.setShort(buffer, (short) (offset + 2 + expLen), modLen);
 		return (short) (4 + expLen + modLen);
 	}
@@ -260,7 +260,7 @@ public class Paystival extends Applet {
 		Cipher rsaCipher = Cipher.getInstance(Cipher.ALG_RSA_NOPAD, false);
 		rsaCipher.init(rsaPrivateKey, Cipher.MODE_DECRYPT);
 
-		/* Perform encryption */
+		/* Perform decryption */
 		short outLen = rsaCipher.doFinal(inBuffer, offset, (short)64, uncipheredChallenge, (short)0);
 		byte ok = Util.arrayCompare(uncipheredChallenge, (short)0, this.challenge, (short)0, CHALL_LENGTH);
 

@@ -1,8 +1,14 @@
-import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from api import *
+from ecdsa import SigningKey, VerifyingKey
+from ecdsa.util import sigencode_der, sigdecode_der
+from utils import *
+from config import *
+from sqlite3 import *
+import sys, os, subprocess
+import hashlib
 
 
 class MainWindow(QMainWindow):
@@ -14,6 +20,7 @@ class MainWindow(QMainWindow):
 		self.setWindowTitle("Paystival")
 		self.setGeometry(200,200,1200,800)
 		self.button_view()
+		self.connection = create_connection()
 
 	def button_view(self):
 		self.main_widget = ButtonViewWidget(self)
@@ -74,8 +81,6 @@ class RegisterViewWidget(QWidget):
 		self.last_name.setFont(QFont("Arial", 20))
 		self.userid = QLabel("ID  ")
 		self.userid.setFont(QFont("Arial", 20))
-		self.amount = QLabel("Montant  ")
-		self.amount.setFont(QFont("Arial", 20))
 		self.pin = QLabel("PIN  ")
 		self.pin.setFont(QFont("Arial", 20))
 
@@ -88,9 +93,6 @@ class RegisterViewWidget(QWidget):
 		self.useridfield = QLineEdit()
 		self.useridfield.setFixedHeight(50)
 		self.useridfield.setFont(QFont("Arial", 20))
-		self.amountfield = QLineEdit()
-		self.amountfield.setFixedHeight(50)
-		self.amountfield.setFont(QFont("Arial", 20))
 		self.pin1field = QLineEdit()
 		self.pin1field.setEchoMode(QLineEdit.Password)
 		self.pin1field.setFixedHeight(50)
@@ -108,8 +110,6 @@ class RegisterViewWidget(QWidget):
 		self.flayout.addRow(QLabel(""), QLabel(""))
 		self.flayout.addRow(self.userid, self.useridfield)
 		self.flayout.addRow(QLabel(""), QLabel(""))
-		self.flayout.addRow(self.amount, self.amountfield)
-		self.flayout.addRow(QLabel(""), QLabel(""))
 		self.vbox = QVBoxLayout()
 		self.vbox.addWidget(self.pin1field)
 		self.vbox.addWidget(self.pin2field)
@@ -123,26 +123,14 @@ class RegisterViewWidget(QWidget):
 		if b == "Retour":
 			self.parent.button_view()
 		elif b == "Valider":
+			self.buttons[0].setEnabled(False)
+			self.buttons[1].setEnabled(False)
+			self.buttons[0].setText("Chargement...")
 			fn = self.first_namefield.text()
 			ln = self.last_namefield.text()
 			uid = self.useridfield.text()
-			a = self.amountfield.text()
 			p1 = self.pin1field.text()
 			p2 = self.pin2field.text()
-			try:
-				a = int(a, 10)	
-			except:
-				self.dialog = QDialog()
-				self.dialog.resize(300, 100)
-				tdiag = QLabel("Montant invalide !", self.dialog)
-				tdiag.move(50, 20)
-				bdiag = QPushButton("Retour", self.dialog)
-				bdiag.clicked.connect(self.home_clicked)
-				bdiag.move(115, 60)
-				self.dialog.setWindowTitle("Echec de l'enregistrement")
-				self.dialog.setWindowModality(Qt.ApplicationModal)
-				self.dialog.exec_()
-				return
 			if fn == "":
 				self.dialog = QDialog()
 				self.dialog.resize(300, 100)
@@ -166,10 +154,17 @@ class RegisterViewWidget(QWidget):
 				self.dialog.setWindowModality(Qt.ApplicationModal)
 				self.dialog.exec_()
 
-			elif len(uid) != 16:
+			elif len(uid) != 8:
 				self.dialog = QDialog()
 				self.dialog.resize(300, 100)
 				tdiag = QLabel("ID client invalide !", self.dialog)
+				tdiag.move(50, 20)
+				bdiag = QPushButton("Retour", self.dialog)
+				bdiag.clicked.connect(self.home_clicked)
+				bdiag.move(115, 60)
+				self.dialog.setWindowTitle("Echec de l'enregistrement")
+				self.dialog.setWindowModality(Qt.ApplicationModal)
+				self.dialog.exec_()
 
 			elif p1 != p2 or len(p1) != 4:
 				self.dialog = QDialog()
@@ -183,16 +178,38 @@ class RegisterViewWidget(QWidget):
 				self.dialog.setWindowModality(Qt.ApplicationModal)
 				self.dialog.exec_()
 
-			# TODO: api call to write data on the card + sign and stuff
 			else:
+				# API call to write data on the card + sign and stuff
+				with open("../keys/sk.pem") as f:
+				   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
+				
+				first_name = pad_array([ord(c) for c in fn], 0x14)
+				last_name = pad_array([ord(c) for c in ln], 0x14)
+				data = first_name + last_name + hex_to_array(uid)
+				new_signature = sk.sign_deterministic(bytearray(data))
+				hsig = new_signature.hex()
+				first_name = array_to_hexdigest(first_name)
+				last_name = array_to_hexdigest(last_name)
+				pin = str2hex(p1)
+				param = pin + first_name + last_name + uid + hsig
+				param = param.upper()
+				out = subprocess.Popen(['java', '-jar', GP_PATH, '-delete', '0102030405'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				out.stdout.read()
+				out = subprocess.Popen(['java', '-jar', GP_PATH, '-install', BIN_PATH, '-default', '-params', param], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				out.stdout.read()
+
+				if self.parent.connection is None:
+					self.parent.connection = create_connection()
+				ok = ask_and_store_public_key(self.parent.connection)
+				
 				self.dialog = QDialog()
 				self.dialog.resize(300, 100)
-				tdiag = QLabel("Transaction effectuée avec succès !", self.dialog)
+				tdiag = QLabel("Enregistrement effectué avec succès !", self.dialog)
 				tdiag.move(50, 20)
 				bdiag = QPushButton("Retour", self.dialog)
 				bdiag.clicked.connect(self.home_clicked)
 				bdiag.move(115, 60)
-				self.dialog.setWindowTitle("Transaction effectuée")
+				self.dialog.setWindowTitle("Enregistrement effectué")
 				self.dialog.setWindowModality(Qt.ApplicationModal)
 				self.dialog.exec_()
 		
@@ -316,10 +333,14 @@ class PINViewWidget(QWidget):
 			self.parent.button_view()
 
 	def validate_pin(self):
-		# Call backend API to validate the PIN
-		amount = ask_balance_with_pin([ord(c) for c in self.pin])
-		if amount != -1:
+		if self.parent.connection is None:
+			self.parent.connection = create_connection()
+		# Call the API to validate the pin
+		ok = ask_pin_validation(self.parent.connection, [ord(c) for c in self.pin])
+		if ok:
 			if self.nextv == "balance":
+				# Call backend API to get the balance
+				amount = ask_balance(self.parent.connection)
 				self.parent.balance_view(amount)
 			elif self.nextv == "charge":
 				self.parent.charge_view()
