@@ -12,14 +12,14 @@ public class Paystival extends Applet {
 	
 	/* Possible instructions */
 	private static final byte INS_VERIFY_PIN = (byte)0x01;
-	private static final byte INS_DEBIT_BALANCE = (byte)0x02;
+private static final byte INS_DEBIT_BALANCE = (byte)0x02;
 	private static final byte INS_CREDIT_BALANCE = (byte)0x03;
 	private static final byte INS_REQUEST_BALANCE = (byte)0x04;
 	private static final byte INS_REQUEST_INFO = (byte)0x05;
 	private static final byte INS_REQUEST_TRANS = (byte)0x06;
 	private static final byte INS_REQUEST_PUB_KEY = (byte)0x07;
 	private static final byte INS_REQUEST_CHALLENGE = (byte)0x08;
-	private static final byte INS_REQUEST_TRANSACTION = (byte)0x09;
+	private static final byte INS_TRANFER = (byte)0x09;
 	
 	/* General settings */ 
 	private static final byte PIN_MAX_TRIES = (byte)0x05;
@@ -64,7 +64,7 @@ public class Paystival extends Applet {
 		/* Transaction manager storage in memory */
 		manager = new TransactionManager();
 	
-		/* Calculating the offset for the hardcoded parameter */
+		/* Calculating the offset for the hardcoded parameters */
 		byte iLen = bArray[bOffset];
 		bOffset = (short)(bOffset+iLen+0x1);
 		byte cLen = bArray[bOffset];
@@ -123,6 +123,22 @@ public class Paystival extends Applet {
 				ISOException.throwIt(SW_INVALID_PIN); /* Wrong PIN */	
 			}
 		    break;
+
+		case INS_TRANFER:
+			if (!userPIN.isValidated()) {
+				ISOException.throwIt(SW_UNAUTH_ACCESS); /* Unauthenticated access */	
+			}
+
+			/* Verify the challenge, TODO: check challenge has been asked */
+			boolean ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
+			if (!ok) {
+				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
+			}
+			
+			a = (short)((buffer[ISO7816.OFFSET_CDATA]<<8)|(buffer[ISO7816.OFFSET_CDATA+1]&0xFF));
+			validated = this.debit(a);
+
+			break;
 	
 		case INS_DEBIT_BALANCE:
 			if (!userPIN.isValidated()) {

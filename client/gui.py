@@ -22,25 +22,55 @@ class MainWindow(QMainWindow):
 		self.button_view()
 		self.connection = create_connection()
 
+	def check_con(self):
+		ok = is_card_connected()
+		if ok:
+			self.connection = create_connection()
+		return ok
+
+	def no_card_popup(self):
+		self.dialog = QDialog()
+		self.dialog.resize(300, 100)
+		tdiag = QLabel("Veuillez brancher une carte !", self.dialog)
+		tdiag.move(50, 20)
+		bdiag = QPushButton("Retour", self.dialog)
+		bdiag.clicked.connect(self.dialog.done)
+		bdiag.move(115, 60)
+		self.dialog.setWindowTitle("Aucune carte détectée")
+		self.dialog.setWindowModality(Qt.ApplicationModal)
+		self.dialog.exec_()
+
 	def button_view(self):
 		self.main_widget = ButtonViewWidget(self)
 		self.setCentralWidget(self.main_widget)
 
 	def pin_view(self, nextv):
-		self.main_widget = PINViewWidget(self, nextv)
-		self.setCentralWidget(self.main_widget)
+		if not self.check_con():
+			self.no_card_popup()
+		else:
+			self.main_widget = PINViewWidget(self, nextv)
+			self.setCentralWidget(self.main_widget)
 	
 	def balance_view(self, amount):
-		self.main_widget = BalanceViewWidget(self, amount)
-		self.setCentralWidget(self.main_widget)
+		if not self.check_con():
+			self.no_card_popup()
+		else:
+			self.main_widget = BalanceViewWidget(self, amount)
+			self.setCentralWidget(self.main_widget)
 
 	def register_view(self):
-		self.main_widget = RegisterViewWidget(self)
-		self.setCentralWidget(self.main_widget)
+		if not self.check_con():
+			self.no_card_popup()
+		else:
+			self.main_widget = RegisterViewWidget(self)
+			self.setCentralWidget(self.main_widget)
 
 	def charge_view(self):
-		self.main_widget = ChargeViewWidget(self)
-		self.setCentralWidget(self.main_widget)
+		if not self.check_con():
+			self.no_card_popup()
+		else:
+			self.main_widget = ChargeViewWidget(self)
+			self.setCentralWidget(self.main_widget)
 
 	def transfer_option(self):
 		pass
@@ -53,15 +83,75 @@ class MainWindow(QMainWindow):
 
 class ChargeViewWidget(QWidget):
 
-	def _init__(self, parent):
+	def __init__(self, parent):
 		super().__init__()
 		self.parent = parent
 
 		# Construction du widget
-		self.layout = QFormLayout()
-		self.amount = QLabel("Amount")
+		self.flayout = QFormLayout()
+		self.flayout.setContentsMargins(50, 50, 50, 50)
+		self.amount = QLabel("Montant")
+		self.amount.setFont(QFont("Arial", 20))
 		self.amountfield = QLineEdit()	
-		self.setLayout(self.layout)
+		self.amountfield.setFixedHeight(50)
+		self.amountfield.setFont(QFont("Arial", 20))
+		self.buttons = [QPushButton("Retour"), QPushButton("Valider")]
+		self.buttons[0].clicked.connect(self.button_clicked)
+		self.buttons[1].clicked.connect(self.button_clicked)
+		self.buttons[0].setFont(QFont("Arial", 20))
+		self.buttons[1].setFont(QFont("Arial", 20))
+		self.flayout.addRow(self.amount, self.amountfield)
+		self.flayout.addRow(QLabel(""), QLabel(""))
+		self.flayout.addRow(self.buttons[0], self.buttons[1])
+		self.setLayout(self.flayout)
+
+	def button_clicked(self):
+		text = self.sender().text()
+		if text == "Retour":
+			self.parent.button_view()
+		elif text == "Valider":
+			try:
+				a = int(self.amountfield.text(), 10)
+				# API call to credit the card	
+				ok = credit_balance(self.parent.connection, a)
+				if ok:
+					self.dialog = QDialog()
+					self.dialog.resize(300, 100)
+					tdiag = QLabel("Rechargement terminé !", self.dialog)
+					tdiag.move(50, 20)
+					bdiag = QPushButton("Retour", self.dialog)
+					bdiag.clicked.connect(self.home_clicked)
+					bdiag.move(115, 60)
+					self.dialog.setWindowTitle("Opération réussie")
+					self.dialog.setWindowModality(Qt.ApplicationModal)
+					self.dialog.exec_()
+				else:
+					self.dialog = QDialog()
+					self.dialog.resize(300, 100)
+					tdiag = QLabel("Echec du rechargement !", self.dialog)
+					tdiag.move(50, 20)
+					bdiag = QPushButton("Retour", self.dialog)
+					bdiag.clicked.connect(self.home_clicked)
+					bdiag.move(115, 60)
+					self.dialog.setWindowTitle("Echec de l'opération")
+					self.dialog.setWindowModality(Qt.ApplicationModal)
+					self.dialog.exec_()
+
+			except:
+				self.dialog = QDialog()
+				self.dialog.resize(300, 100)
+				tdiag = QLabel("Mauvais montant !", self.dialog)
+				tdiag.move(50, 20)
+				bdiag = QPushButton("Retour", self.dialog)
+				bdiag.clicked.connect(self.home_clicked)
+				bdiag.move(115, 60)
+				self.dialog.setWindowTitle("Echec du rechargement")
+				self.dialog.setWindowModality(Qt.ApplicationModal)
+				self.dialog.exec_()
+
+	def home_clicked(self):
+		self.dialog.done(0)
+		self.parent.button_view()
 
 class RegisterViewWidget(QWidget):
 
@@ -86,7 +176,7 @@ class RegisterViewWidget(QWidget):
 
 		self.first_namefield = QLineEdit()
 		self.first_namefield.setFixedHeight(50)
-		self.first_namefield.setFont(QFont("Arial", 20))
+		self.first_namefield.setFont(QFont("arial", 20))
 		self.last_namefield = QLineEdit()
 		self.last_namefield.setFixedHeight(50)
 		self.last_namefield.setFont(QFont("Arial", 20))
@@ -182,7 +272,8 @@ class RegisterViewWidget(QWidget):
 				# API call to write data on the card + sign and stuff
 				with open("../keys/sk.pem") as f:
 				   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
-				
+			
+				close_connection(self.parent.connection)	
 				first_name = pad_array([ord(c) for c in fn], 0x14)
 				last_name = pad_array([ord(c) for c in ln], 0x14)
 				data = first_name + last_name + hex_to_array(uid)
@@ -198,9 +289,8 @@ class RegisterViewWidget(QWidget):
 				out = subprocess.Popen(['java', '-jar', GP_PATH, '-install', BIN_PATH, '-default', '-params', param], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 				out.stdout.read()
 
-				if self.parent.connection is None:
-					self.parent.connection = create_connection()
-				ok = ask_and_store_public_key(self.parent.connection)
+				self.parent.connection = create_connection()
+				ok = ask_and_store_public_key(self.parent.connection, uid)
 				
 				self.dialog = QDialog()
 				self.dialog.resize(300, 100)
@@ -333,8 +423,8 @@ class PINViewWidget(QWidget):
 			self.parent.button_view()
 
 	def validate_pin(self):
-		if self.parent.connection is None:
-			self.parent.connection = create_connection()
+		close_connection(self.parent.connection)
+		self.parent.connection = create_connection()
 		# Call the API to validate the pin
 		ok = ask_pin_validation(self.parent.connection, [ord(c) for c in self.pin])
 		if ok:

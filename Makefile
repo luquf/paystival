@@ -15,7 +15,8 @@ delete:
 	$(GPJ) -delete $(DELETE)
 
 build:
-	ant
+	ant && python setup.py
+
 
 list:
 	$(GPJ) -l

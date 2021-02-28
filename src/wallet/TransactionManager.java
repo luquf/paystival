@@ -10,7 +10,7 @@ public class TransactionManager {
 	private short length;
 
 	public TransactionManager() {
-		this.transactions = new Transaction[1000];
+		this.transactions = new Transaction[500];
 		this.length = 0;
 	}
 
@@ -19,7 +19,7 @@ public class TransactionManager {
 	}	
 	
 	public boolean storeTransaction(Transaction t) {
-		if (length < (short)1000) {
+		if (length < (short)500) {
 			transactions[length] = t;
 			length++;
 			return true;
@@ -28,7 +28,7 @@ public class TransactionManager {
 	}
 
 	public Transaction getTransaction(short i) {
-		if (i < 0 || i > 999) {
+		if (i < 0 || i > 499) {
 			return null;
 		}
 		return this.transactions[i];

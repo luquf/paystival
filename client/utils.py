@@ -11,6 +11,10 @@ def to2hex(val):
 	fmt = "%0.2x" % val
 	return fmt.format(val)
 
+def to8hex(val):
+	fmt = "%0.8x" % val
+	return fmt.format(val)
+
 def get_pin_from_str(pin):
 	return [ord(c) for c in pin]
 

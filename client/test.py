@@ -34,6 +34,18 @@ if sw1 == 0x98 and sw2 == 0x04:
 else:
 	print("Good PIN")
 
+# REQUEST TRANS
+for i in range(0, 1000):
+	Le = 0x2
+	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_TRANS,P1,P2,Le]+[(i>>8)&0xFF, i&0xFF])
+	if sw1 == 0x90 and sw2 == 0x00:
+		t = Transaction(data)
+		print(t)
+		print("Verifying transaction =>", t.verify_transaction())
+	else:
+		break
+
+
 # GET BALANCE
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_BALANCE,P1,P2,Le])
@@ -73,13 +85,10 @@ if sw1 == 0x90 and sw2 == 0x00:
 	r = cur.fetchall()
 	cur.close()
 	conn.close()
-	#print("public key is", r[0][0], int(r[0][1], 10))
 	pubkey = construct((int(r[0][1], 10), r[0][0]))
 	num = int.from_bytes(data, "big")
-	#print("challenge is", num)
 	enc = pubkey.encrypt(num, 0)[0]
 	enc = list(enc.to_bytes(64, "big"))
-	#print("encrypted challenge is", enc)
 else:
 	print_ret_codes(sw1, sw2)
 	print("no operation 8")
@@ -88,7 +97,7 @@ else:
 Le = 0x42
 data, sw1, sw2 = connection.transmit([CLA,INS_CREDIT_BALANCE,P1,P2,Le]+[0x0, 0x02]+enc)
 if sw1 == 0x90 and sw2 == 0x00:
-	print("test debit/credit done")
+	print("test credit done")
 else:
 	print_ret_codes(sw1, sw2)
 	print("no operation 9")
@@ -114,15 +123,12 @@ if sw1 == 0x90 and sw2 == 0x00:
 	userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
 	cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))
 	r = cur.fetchall()
+	num = int.from_bytes(data, "big")
 	cur.close()
 	conn.close()
-	#print("public key is", r[0][0], int(r[0][1], 10))
 	pubkey = construct((int(r[0][1], 10), r[0][0]))
-	num = int.from_bytes(data, "big")
-	#print("challenge is", num)
 	enc = pubkey.encrypt(num, 0)[0]
 	enc = list(enc.to_bytes(64, "big"))
-	#print("encrypted challenge is", enc)
 else:
 	print_ret_codes(sw1, sw2)
 	print("no operation 8")
