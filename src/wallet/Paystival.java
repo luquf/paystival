@@ -91,7 +91,7 @@ private static final byte INS_DEBIT_BALANCE = (byte)0x02;
 			ISOException.throwIt(reason);
 		}
 	
-		balance = (short)0x114; /* 276 € */
+		balance = (short)0x0; /* 0 € */
 	
 		register();
 	}
@@ -146,7 +146,7 @@ private static final byte INS_DEBIT_BALANCE = (byte)0x02;
 			}
 
 			/* Verify the challenge, TODO: check challenge has been asked */
-			boolean ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
+			ok = this.verifyChallenge(buffer, (short)(ISO7816.OFFSET_CDATA+(short)2));
 			if (!ok) {
 				ISOException.throwIt(SW_INVALID_CHALLENGE_CIPHER); /* Invalid challenge cipher */	
 			}

@@ -2,10 +2,10 @@
 
 from sqlite3 import *
 
-with open("storage/pk_infra.sqlite", "w") as f:
+with open("res/pk_infra.sqlite", "w") as f:
 	pass
 
-conn = connect("storage/pk_infra.sqlite")
+conn = connect("res/pk_infra.sqlite")
 cur = conn.cursor()
 
 cur.execute("CREATE TABLE public_keys (userid VARCHAR(8), exponent INT, modulus TEXT)") 

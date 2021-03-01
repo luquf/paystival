@@ -65,15 +65,22 @@ class MainWindow(QMainWindow):
 			self.main_widget = RegisterViewWidget(self)
 			self.setCentralWidget(self.main_widget)
 
-	def charge_view(self):
+	def charge_view(self, conn):
 		if not self.check_con():
 			self.no_card_popup()
 		else:
-			self.main_widget = ChargeViewWidget(self)
+			self.main_widget = ChargeViewWidget(self, conn)
+			self.setCentralWidget(self.main_widget)
+
+	def transfer_view(self, trans):
+		if not self.check_con():
+			self.no_card_popup()
+		else:
+			self.main_widget = TransferViewWidget(self, trans)
 			self.setCentralWidget(self.main_widget)
 
 	def transfer_option(self):
-		pass
+		self.pin_view("transfer")
 
 	def charge_option(self):
 		self.pin_view("charge")
@@ -81,11 +88,57 @@ class MainWindow(QMainWindow):
 	def balance_option(self):
 		self.pin_view("balance")
 
-class ChargeViewWidget(QWidget):
 
-	def __init__(self, parent):
+
+class TransferViewWidget(QWidget):
+
+	def __init__(self, parent, trans):
 		super().__init__()
 		self.parent = parent
+
+		# Construction du widget
+		self.glayout = QGridLayout()
+		self.tablewidget = QTableWidget(len(trans), 6)
+		self.tablewidget.horizontalHeader().setStretchLastSection(True) 
+		self.tablewidget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
+		self.tablewidget.setHorizontalHeaderLabels(['Montant','Type', 'ID', 'Origine', 'Destination', 'Signature vérifiée'])
+		for i in range(len(trans)):
+			item = QTableWidgetItem(str(trans[i].amount)+'€')
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 0, item) 
+			item = QTableWidgetItem(trans[i].trans_type[trans[i].type])
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 1, item) 
+			item = QTableWidgetItem(to8hex(trans[i].tid))
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 2, item) 
+			item = QTableWidgetItem("Utilisateur" if not trans[i].from_ else to8hex(trans[i].from_))
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 3, item) 
+			item = QTableWidgetItem("Festival" if trans[i].to==0xFFFFFFFF else to8hex(trans[i].to))
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 4, item) 
+			item = QTableWidgetItem("Oui" if trans[i].verify_transaction() else "Non")
+			item.setTextAlignment(Qt.AlignHCenter)
+			self.tablewidget.setItem(i, 5, item) 
+
+		self.back = QPushButton("Retour")
+		self.back.setFont(QFont("Arial", 20))
+		self.back.clicked.connect(self.button_clicked)
+		self.glayout.addWidget(self.tablewidget, 0, 0)
+		self.glayout.addWidget(self.back, 1, 0)
+		self.setLayout(self.glayout)
+
+	def button_clicked(self):
+		self.parent.button_view()	
+
+
+class ChargeViewWidget(QWidget):
+
+	def __init__(self, parent, connection):
+		super().__init__()
+		self.parent = parent
+		self.conn = connection
 
 		# Construction du widget
 		self.flayout = QFormLayout()
@@ -137,7 +190,7 @@ class ChargeViewWidget(QWidget):
 					self.dialog.setWindowModality(Qt.ApplicationModal)
 					self.dialog.exec_()
 
-			except:
+			except Exception as e:
 				self.dialog = QDialog()
 				self.dialog.resize(300, 100)
 				tdiag = QLabel("Mauvais montant !", self.dialog)
@@ -343,7 +396,7 @@ class ButtonViewWidget(QWidget):
 		# Construct the widget
 		self.layout = QGridLayout()
 		self.buttons = [[QPushButton(" Enregistrer ma carte"), QPushButton(" Recharger ma carte")], 
-					    [QPushButton(" Transfert vers une autre carte"), QPushButton(" Voir ma balance")]]
+					    [QPushButton(" Historique de transactions"), QPushButton(" Voir ma balance")]]
 		self.actions = [[self.parent.register_view, self.parent.charge_option], [self.parent.transfer_option, self.parent.balance_option]]
 		for i in range(2):
 			for j in range(2):
@@ -433,7 +486,10 @@ class PINViewWidget(QWidget):
 				amount = ask_balance(self.parent.connection)
 				self.parent.balance_view(amount)
 			elif self.nextv == "charge":
-				self.parent.charge_view()
+				self.parent.charge_view(self.parent.connection)
+			elif self.nextv == "transfer":
+				trans = get_transaction_history(self.parent.connection)
+				self.parent.transfer_view(trans)
 		else:
 			self.update_field("Le PIN entré est invalide")
 			self.pin = ""

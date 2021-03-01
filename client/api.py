@@ -65,6 +65,18 @@ def request_user_infos(connection):
 	else:
 		None
 
+def get_transaction_history(connection):
+	trans = []
+	for i in range(0, 1000):
+		Le = 0x2
+		data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_TRANS,P1,P2,Le]+[(i>>8)&0xFF, i&0xFF])
+		if sw1 == 0x90 and sw2 == 0x00:
+			t = Transaction(data)
+			trans.append(t)
+		else:
+			break
+	return trans
+
 def credit_balance(connection, amount):
 	# first request the user infos
 	infos = request_user_infos(connection)
@@ -75,7 +87,7 @@ def credit_balance(connection, amount):
 	Le = 0x0
 	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
 	if sw1 == 0x90 and sw2 == 0x00:
-		conn = connect("../storage/pk_infra.sqlite")	
+		conn = connect("../res/pk_infra.sqlite")	
 		cur = conn.cursor()
 		userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
 		cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))
@@ -102,7 +114,7 @@ def ask_and_store_public_key(connection, userid):
 	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_PUB_KEY,P1,P2,Le])
 	if sw1 == 0x90 and sw2 == 0x00:
 		pkey = get_card_public_key(data)
-		conn = connect("../storage/pk_infra.sqlite")
+		conn = connect("../res/pk_infra.sqlite")
 		cur = conn.cursor()
 		cur.execute("INSERT INTO public_keys(userid, exponent, modulus) VALUES(?, ?, ?)", (userid, pkey[1], str(pkey[3])))
 		conn.commit()

@@ -29,7 +29,7 @@ class Transaction:
 	def verify_transaction(self):
 		data = bytearray(self.byte_array[:19])
 		userid = ""
-		conn = connect("../storage/pk_infra.sqlite")	
+		conn = connect("../res/pk_infra.sqlite")	
 		cur = conn.cursor()
 		if self.type == 0:
 			userid = to2hex(self.to)
