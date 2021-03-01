@@ -8,6 +8,7 @@ TODO:
 - card info + signature ....................... DONE
 - on card RSA key pair generation ............. DONE
 - debit machine authentication challenge ...... DONE (GO TO ECC IF POSSIBLE)
-- client GUI .................................. TO BE FINISHED
-- transcation logging ......................... DONE (TIMESTAMP TO ADD TO OBJECT + SIGN INSTEAD OF HASH)
+- client GUI .................................. DONE
+- cashier GUI ................................. DONE
+- transcation logging ......................... DONE 
 - credit card to card ......................... TODO
