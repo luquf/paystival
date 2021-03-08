@@ -27,7 +27,7 @@ public class Paystival extends Applet {
 	/* Balance can be between 0 and 1000 euros */
 	private static final short MAX_BALANCE = (short)0x3e8;
 	private static final short MIN_BALANCE = (short)0x0;
-	private static final byte MAX_TRANS = (byte)0x32;
+	private static final byte MAX_TRANS = (byte)0x3e8;
 	
 	/* Exceptions */
 	private static final short SW_INSUFFICIENT_FUNDS = (short)0x9900;

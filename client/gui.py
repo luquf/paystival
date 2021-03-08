@@ -25,7 +25,7 @@ class MainWindow(QMainWindow):
 	def check_con(self):
 		ok = is_card_connected()
 		if ok:
-			self.connection = create_connection()
+			self.connection = create_register_connection()
 		return ok
 
 	def no_card_popup(self):
@@ -322,11 +322,13 @@ class RegisterViewWidget(QWidget):
 				self.dialog.exec_()
 
 			else:
-				# API call to write data on the card + sign and stuff
 				with open("../keys/sk.pem") as f:
 				   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
 			
-				close_connection(self.parent.connection)	
+				try:
+					close_connection(self.parent.connection)	
+				except:
+					pass
 				first_name = pad_array([ord(c) for c in fn], 0x14)
 				last_name = pad_array([ord(c) for c in ln], 0x14)
 				data = first_name + last_name + hex_to_array(uid)

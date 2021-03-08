@@ -11,6 +11,7 @@ from ecdsa.util import sigencode_der, sigdecode_der
 from Crypto.PublicKey.RSA import construct
 from sqlite3 import *
 import sys, os, subprocess
+from utils import *
 
 def is_card_connected():
 	r = readers()
@@ -21,6 +22,17 @@ def select_applet(connection):
 	if sw1 != 0x90 or sw2 != 0x0:
 		return False
 	return True
+
+def create_register_connection():
+	r = readers()
+	if len(r) == 0:
+		return None
+	try:
+		connection = r[0].createConnection()
+		connection.connect()
+		return connection
+	except:
+		return None
 
 def create_connection():
 	r = readers()
@@ -33,7 +45,7 @@ def create_connection():
 		if not ok:
 			return None
 		return connection
-	except:
+	except Exception as e:
 		return None
 
 
@@ -105,7 +117,6 @@ def credit_balance(connection, amount):
 		if sw1 == 0x90 and sw2 == 0x00:
 			return True
 		else:
-			print(hex(sw1), hex(sw2))
 			return False
 	else:
 		return False

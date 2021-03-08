@@ -23,7 +23,7 @@ keys:
 	@rm -rf keys/*.pem
 	@openssl ecparam -name prime256v1 -genkey -out keys/sk.pem
 	@openssl ec -in keys/sk.pem -pubout -out keys/vk.pem
-	@chmod 600 keys/sk.pem
+	@chmod 600 keys/*.pem
 	@echo "Fresh pair of ECDSA keys created..."
 
 setup:
