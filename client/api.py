@@ -105,6 +105,7 @@ def credit_balance(connection, amount):
 		if sw1 == 0x90 and sw2 == 0x00:
 			return True
 		else:
+			print(hex(sw1), hex(sw2))
 			return False
 	else:
 		return False

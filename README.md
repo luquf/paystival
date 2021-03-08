@@ -1,14 +1,47 @@
-INF648: Embedded security/side channel attack project
+# INF648: Embedded security/side channel attack project; javacard
 
-This project aims to implement a cashless payment system for festivals.
+This project aims to implement a cashless payment system for festivals based on the javacard environment.
 
-TODO:
-- pin authentication .......................... DONE
-- card creation ............................... DONE
-- card info + signature ....................... DONE
-- on card RSA key pair generation ............. DONE
-- debit machine authentication challenge ...... DONE (GO TO ECC IF POSSIBLE)
-- client GUI .................................. DONE
-- cashier GUI ................................. DONE
-- transcation logging ......................... DONE 
-- credit card to card ......................... TODO
+## Requirements
+- Linux based system
+- Python3
+- Openssl
+- GlobalPlatformPro command line tools in $PATH 
+```console
+foo@bar:~$ echo "alias gpj='java -jar $HOME/path/to/GlobalPlatformPro/gp.jar'" >> ~/.bash_aliases
+```
+
+## Installation
+
+Download the project
+```console
+foo@bar:~$ git clone https://github.com/luquf/paystival
+foo@bar:~$ cd paystival
+```
+Activate the python virtual environment
+```console
+foo@bar:~$ source env/bin/activate
+```
+Install the dependancies
+```console
+foo@bar:~$ python -m pip install -r requirements.txt
+```
+
+## Running the project
+Setup the database for a new use
+```console
+foo@bar:~$ make setup
+```
+Create a new pair of ECDSA keys for the festival
+```console
+foo@bar:~$ make keys
+```
+Run the flow machines graphical interface
+```console
+foo@bar:~$ make client
+```
+Run the cashier graphical interface
+```console
+foo@bar:~$ make cashier
+```
+

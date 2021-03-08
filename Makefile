@@ -2,30 +2,35 @@ CC=gpj
 INSTALL=bin/Paystival221.cap
 DELETE=0102030405
 GPJ=java -jar GlobalPlatformPro/gp.jar
-PIN=31323334
-FIRST_NAME=4C656F0000000000000000000000000000000000
-LAST_NAME=426572746F6E0000000000000000000000000000
-USERID=deadbeef
-SIGNATURE=3046022100E42E0703695F404A6A7413AD4200D803B8E10B12C75DDD116421A3C5C35626A302210086546808122DDC1AB986704C07F7E4DDC56C1A381E9382DBB8AD8792D355232F
 
-install:
-	$(GPJ) -install $(INSTALL) -default -params $(PIN)
+.PHONY: list build client cashier setup keys
 
 delete:
-	$(GPJ) -delete $(DELETE)
+	@$(GPJ) -delete $(DELETE)
+	@echo "Card's applet deleted..."
 
 build:
-	ant && python setup.py
-
+	@ant 
 
 list:
-	$(GPJ) -l
+	@$(GPJ) -l
 
 clean:
-	rm -rf $(INSTALL)
+	@rm -rf $(INSTALL)
+	@echo "Binary applet removed..."
 
-all:
-	ant
-	$(GPJ) -delete $(DELETE)
-	$(GPJ) -install $(INSTALL) -default -params $(PIN)$(FIRST_NAME)$(LAST_NAME)$(USERID)$(SIGNATURE)
+keys:
+	@rm -rf keys/*.pem
+	@openssl ecparam -name prime256v1 -genkey -out keys/sk.pem
+	@openssl ec -in keys/sk.pem -pubout -out keys/vk.pem
+	@chmod 600 keys/sk.pem
+	@echo "Fresh pair of ECDSA keys created..."
 
+setup:
+	@./setup.sh
+
+client:
+	@(cd client && python main.py&)
+
+cashier:
+	@(cd cashier && python main.py&)
