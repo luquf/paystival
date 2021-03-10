@@ -231,9 +231,9 @@ class RegisterViewWidget(QWidget):
 		self.first_name.setFont(QFont("Arial", 20))
 		self.last_name = QLabel("Nom  ")
 		self.last_name.setFont(QFont("Arial", 20))
-		self.userid = QLabel("ID  ")
+		self.userid = QLabel("ID (8 chiffres) ")
 		self.userid.setFont(QFont("Arial", 20))
-		self.pin = QLabel("PIN  ")
+		self.pin = QLabel("PIN (4 chiffres)  ")
 		self.pin.setFont(QFont("Arial", 20))
 
 		self.first_namefield = QLineEdit()
