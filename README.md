@@ -30,6 +30,14 @@ foo@bar:~$ python -m pip install -r requirements.txt
 ```
 
 ## Running the project
+Make sure the card is blank
+```console
+foo@bar:~$ make delete
+```
+Build the project
+```console
+foo@bar:~$ make clean && make build
+```
 Setup the database for a new use
 ```console
 foo@bar:~$ make setup
