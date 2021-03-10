@@ -1,7 +1,7 @@
 # Avoid pushing database
-res/pk_infra.sqlite
-./res/pk_infra.sqlite
-/res/pk_infra.sqlite
+res/paystival.sqlite
+./res/paystival.sqlite
+/res/paystival.sqlite
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

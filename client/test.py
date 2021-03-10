@@ -78,7 +78,7 @@ enc = None
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
 if sw1 == 0x90 and sw2 == 0x00:
-	conn = connect("../res/pk_infra.sqlite")	
+	conn = connect("../res/paystival.sqlite")	
 	cur = conn.cursor()
 	userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
 	cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))
@@ -118,7 +118,7 @@ enc = None
 Le = 0x0
 data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_CHALLENGE,P1,P2,Le])
 if sw1 == 0x90 and sw2 == 0x00:
-	conn = connect("../res/pk_infra.sqlite")	
+	conn = connect("../res/paystival.sqlite")	
 	cur = conn.cursor()
 	userid = to2hex(infos[2][0])+to2hex(infos[2][1])+to2hex(infos[2][2])+to2hex(infos[2][3])
 	cur.execute("SELECT exponent, modulus FROM public_keys WHERE userid=?", (userid,))

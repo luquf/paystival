@@ -49,7 +49,7 @@ data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_PUB_KEY,P1,P2,Le])
 #print(data)
 if sw1 == 0x90 and sw2 == 0x00:
 	pkey = get_card_public_key(data)
-	conn = connect("../res/pk_infra.sqlite")
+	conn = connect("../res/paystival.sqlite")
 	cur = conn.cursor()
 	cur.execute("INSERT INTO public_keys(userid, exponent, modulus) VALUES(?, ?, ?)", (userid, pkey[1], str(pkey[3])))
 	conn.commit()
