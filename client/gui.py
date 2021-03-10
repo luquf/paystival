@@ -34,6 +34,18 @@ class MainWindow(QMainWindow):
 		self.dialog.setWindowModality(Qt.ApplicationModal)
 		self.dialog.exec_()
 
+	def invalid_sig_popup(self):
+		self.dialog = QDialog()
+		self.dialog.resize(300, 100)
+		tdiag = QLabel("Signature de carte invalide !", self.dialog)
+		tdiag.move(50, 20)
+		bdiag = QPushButton("Retour", self.dialog)
+		bdiag.clicked.connect(self.dialog.done)
+		bdiag.move(115, 60)
+		self.dialog.setWindowTitle("Carte invalide")
+		self.dialog.setWindowModality(Qt.ApplicationModal)
+		self.dialog.exec_()
+
 	def button_view(self):
 		self.main_widget = ButtonViewWidget(self)
 		self.setCentralWidget(self.main_widget)
@@ -45,6 +57,12 @@ class MainWindow(QMainWindow):
 			pass
 		try:
 			self.connection = create_connection()
+			try:
+				ok = check_valid_info(self.connection)
+			except:
+				self.invalid_sig_popup()
+				return
+				
 			self.main_widget = PINViewWidget(self, nextv)
 			self.setCentralWidget(self.main_widget)
 		except:

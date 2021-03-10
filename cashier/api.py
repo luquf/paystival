@@ -12,10 +12,6 @@ from Crypto.PublicKey.RSA import construct
 from sqlite3 import *
 import sys, os, subprocess
 
-def is_card_connected():
-	r = readers()
-	return len(r) > 0
-
 def select_applet(connection):
 	data, sw1, sw2 = connection.transmit(apdu)
 	if sw1 != 0x90 or sw2 != 0x0:
@@ -25,17 +21,28 @@ def select_applet(connection):
 def create_connection():
 	r = readers()
 	if len(r) == 0:
-		return None
+		raise Exception
 	try:
 		connection = r[0].createConnection()
 		connection.connect()
 		ok = select_applet(connection)
 		if not ok:
-			return None
+			raise Exception
 		return connection
 	except:
-		return None
+		raise Exception
 
+def check_valid_info(connection):
+	Le = 0x0
+	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_INFO,P1,P2,Le])
+	if sw1 == 0x90 and sw2 == 0x00:
+		infos = parse_user_info(data)	
+		with open("../keys/vk.pem") as f:
+		   vk = VerifyingKey.from_pem(f.read())
+		ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256)
+		return ok
+	else:
+		return False
 
 def close_connection(connection):
 	return connection.disconnect()

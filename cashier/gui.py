@@ -24,21 +24,15 @@ class MainWindow(QMainWindow):
 		self.calc_view()
 		self.connection = create_connection()
 
-	def check_con(self):
-		ok = is_card_connected()
-		if ok:
-			self.connection = create_connection()
-		return ok
-
 	def no_card_popup(self):
 		self.dialog = QDialog()
 		self.dialog.resize(300, 100)
-		tdiag = QLabel("Veuillez brancher une carte !", self.dialog)
+		tdiag = QLabel("Carte manquante ou invalide !", self.dialog)
 		tdiag.move(50, 20)
 		bdiag = QPushButton("Retour", self.dialog)
 		bdiag.clicked.connect(self.dialog.done)
 		bdiag.move(115, 60)
-		self.dialog.setWindowTitle("Aucune carte détectée")
+		self.dialog.setWindowTitle("Carte manquante ou invalide")
 		self.dialog.setWindowModality(Qt.ApplicationModal)
 		self.dialog.exec_()
 
@@ -95,39 +89,35 @@ class CalcViewWidget(QWidget):
 				self.update_field("Montant: "+self.amount)
 		elif b in actions:
 			if b == "V":
-				if is_card_connected():
-					try:
-						close_connection(self.parent.connection)
-						self.parent.connection = create_connection()
-					except:
-						pass
-					self.nextv = DebitViewWidget(self.parent, self.amount)
-					self.parent.setCentralWidget(self.nextv)
+				try:
+					close_connection(self.parent.connection)
+				except:
+					pass
+				try:
 					self.parent.connection = create_connection()
-					self.parent.subwindow = PINViewWidget(self.parent)
-					self.parent.subwindow.exec_()
-					if self.parent.pin_validated:
-						ok = debit_balance(self.parent.connection, int(self.amount, 10))
-						if ok:
-							self.nextv.update_status("Transaction terminée!", "green")
-						else:
-							self.nextv.update_status("Echec de la transaction", "red")
-					self.parent.pin_validated = False
-					try:
-						close_connection(self.parent.connection)
-					except:
-						pass
-				else:
-					self.dialog = QDialog()
-					self.dialog.resize(300, 100)
-					tdiag = QLabel("Veuillez brancher une carte !", self.dialog)
-					tdiag.move(50, 20)
-					bdiag = QPushButton("Retour", self.dialog)
-					bdiag.clicked.connect(self.dialog.done)
-					bdiag.move(115, 60)
-					self.dialog.setWindowTitle("Aucune carte détectée")
-					self.dialog.setWindowModality(Qt.ApplicationModal)
-					self.dialog.exec_()
+					ok = check_valid_info(self.parent.connection)
+					if not ok:
+						raise Exception
+				except:
+					self.parent.no_card_popup()
+					return 
+					
+				self.nextv = DebitViewWidget(self.parent, self.amount)
+				self.parent.setCentralWidget(self.nextv)
+				self.parent.connection = create_connection()
+				self.parent.subwindow = PINViewWidget(self.parent)
+				self.parent.subwindow.exec_()
+				if self.parent.pin_validated:
+					ok = debit_balance(self.parent.connection, int(self.amount, 10))
+					if ok:
+						self.nextv.update_status("Transaction terminée!", "green")
+					else:
+						self.nextv.update_status("Echec de la transaction", "red")
+				self.parent.pin_validated = False
+				try:
+					close_connection(self.parent.connection)
+				except:
+					pass
 			elif b == "X":
 				self.amount = ""
 				self.update_field("Montant: ")
