@@ -27,7 +27,6 @@ public class Paystival extends Applet {
 	/* Balance can be between 0 and 1000 euros */
 	private static final short MAX_BALANCE = (short)0x3e8;
 	private static final short MIN_BALANCE = (short)0x0;
-	private static final byte MAX_TRANS = (byte)0x3e8;
 	
 	/* Exceptions */
 	private static final short SW_INSUFFICIENT_FUNDS = (short)0x9900;
@@ -75,6 +74,11 @@ public class Paystival extends Applet {
 		userPIN.update(bArray, (short)(bOffset+1), pinLen);
 
 		this.challenge = new byte[CHALL_LENGTH];
+		
+		/* Avoid challenge full of zeros */
+		RandomData random = RandomData.getInstance(RandomData.ALG_SECURE_RANDOM);
+		random.setSeed(this.challenge, (short)0, CHALL_LENGTH);
+		random.generateData(this.challenge, (short)0, CHALL_LENGTH);
 	
 		this.information = new byte[INFO_LENGTH];
 		Util.arrayCopy(bArray, (short)((bOffset+1)+(short)pinLen), information, (short)0, INFO_LENGTH);
@@ -232,9 +236,6 @@ public class Paystival extends Applet {
 	
 	public boolean credit(short amount) {
 		if ((short)(MAX_BALANCE - this.balance) < amount){
-			return false;
-		}
-		else if (amount > MAX_TRANS) {
 			return false;
 		}
 		this.balance += amount;

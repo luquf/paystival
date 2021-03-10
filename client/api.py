@@ -13,9 +13,6 @@ from sqlite3 import *
 import sys, os, subprocess
 from utils import *
 
-def is_card_connected():
-	r = readers()
-	return len(r) > 0
 
 def select_applet(connection):
 	data, sw1, sw2 = connection.transmit(apdu)
@@ -26,27 +23,39 @@ def select_applet(connection):
 def create_register_connection():
 	r = readers()
 	if len(r) == 0:
-		return None
+		raise Exception
 	try:
 		connection = r[0].createConnection()
 		connection.connect()
 		return connection
 	except:
-		return None
+		raise Exception
+
+def check_valid_info(connection):
+	Le = 0x0
+	data, sw1, sw2 = connection.transmit([CLA,INS_REQUEST_INFO,P1,P2,Le])
+	if sw1 == 0x90 and sw2 == 0x00:
+		infos = parse_user_info(data)	
+		with open("../keys/vk.pem") as f:
+		   vk = VerifyingKey.from_pem(f.read())
+		ok = vk.verify(bytearray(infos[3]), bytearray(infos[0]+infos[1]+infos[2]), hashlib.sha256)
+		return ok
+	else:
+		return False
 
 def create_connection():
 	r = readers()
 	if len(r) == 0:
-		return None
+		raise Exception
 	try:
 		connection = r[0].createConnection()
 		connection.connect()
 		ok = select_applet(connection)
 		if not ok:
-			return None
+			raise Exception
 		return connection
 	except Exception as e:
-		return None
+		raise Exception
 
 
 def close_connection(connection):
@@ -106,7 +115,10 @@ def credit_balance(connection, amount):
 		r = cur.fetchall()
 		cur.close()
 		conn.close()
-		pubkey = construct((int(r[0][1], 10), r[0][0]))
+		try:
+			pubkey = construct((int(r[0][1], 10), r[0][0]))
+		except:
+			return False
 		num = int.from_bytes(data, "big")
 		enc = pubkey.encrypt(num, 0)[0]
 		enc = list(enc.to_bytes(64, "big"))
@@ -117,6 +129,7 @@ def credit_balance(connection, amount):
 		if sw1 == 0x90 and sw2 == 0x00:
 			return True
 		else:
+			print_ret_codes(sw1, sw2)
 			return False
 	else:
 		return False

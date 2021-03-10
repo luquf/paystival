@@ -20,13 +20,7 @@ class MainWindow(QMainWindow):
 		self.setWindowTitle("Paystival")
 		self.setGeometry(200,200,1200,800)
 		self.button_view()
-		self.connection = create_connection()
-
-	def check_con(self):
-		ok = is_card_connected()
-		if ok:
-			self.connection = create_register_connection()
-		return ok
+		self.connection = None
 
 	def no_card_popup(self):
 		self.dialog = QDialog()
@@ -45,39 +39,36 @@ class MainWindow(QMainWindow):
 		self.setCentralWidget(self.main_widget)
 
 	def pin_view(self, nextv):
-		if not self.check_con():
-			self.no_card_popup()
-		else:
+		try:
+			close_connection(self.connection)
+		except: 
+			pass
+		try:
+			self.connection = create_connection()
 			self.main_widget = PINViewWidget(self, nextv)
 			self.setCentralWidget(self.main_widget)
+		except:
+			self.no_card_popup()
 	
 	def balance_view(self, amount):
-		if not self.check_con():
-			self.no_card_popup()
-		else:
-			self.main_widget = BalanceViewWidget(self, amount)
-			self.setCentralWidget(self.main_widget)
+		self.main_widget = BalanceViewWidget(self, amount)
+		self.setCentralWidget(self.main_widget)
 
 	def register_view(self):
-		if not self.check_con():
-			self.no_card_popup()
-		else:
+		try:
+			self.connection = create_register_connection()
 			self.main_widget = RegisterViewWidget(self)
 			self.setCentralWidget(self.main_widget)
+		except:
+			self.no_card_popup()
 
 	def charge_view(self, conn):
-		if not self.check_con():
-			self.no_card_popup()
-		else:
-			self.main_widget = ChargeViewWidget(self, conn)
-			self.setCentralWidget(self.main_widget)
+		self.main_widget = ChargeViewWidget(self, conn)
+		self.setCentralWidget(self.main_widget)
 
 	def transfer_view(self, trans):
-		if not self.check_con():
-			self.no_card_popup()
-		else:
-			self.main_widget = TransferViewWidget(self, trans)
-			self.setCentralWidget(self.main_widget)
+		self.main_widget = TransferViewWidget(self, trans)
+		self.setCentralWidget(self.main_widget)
 
 	def transfer_option(self):
 		self.pin_view("transfer")
@@ -135,10 +126,10 @@ class TransferViewWidget(QWidget):
 
 class ChargeViewWidget(QWidget):
 
-	def __init__(self, parent, connection):
+	def __init__(self, parent, conn):
 		super().__init__()
 		self.parent = parent
-		self.conn = connection
+		self.conn = conn
 
 		# Construction du widget
 		self.flayout = QFormLayout()
@@ -166,7 +157,7 @@ class ChargeViewWidget(QWidget):
 			try:
 				a = int(self.amountfield.text(), 10)
 				# API call to credit the card	
-				ok = credit_balance(self.parent.connection, a)
+				ok = credit_balance(self.conn, a)
 				if ok:
 					self.dialog = QDialog()
 					self.dialog.resize(300, 100)
@@ -326,7 +317,7 @@ class RegisterViewWidget(QWidget):
 				   sk = SigningKey.from_pem(f.read(), hashlib.sha256)
 			
 				try:
-					close_connection(self.parent.connection)	
+					close_connection(self.parent.connection)
 				except:
 					pass
 				first_name = pad_array([ord(c) for c in fn], 0x14)
@@ -478,8 +469,7 @@ class PINViewWidget(QWidget):
 			self.parent.button_view()
 
 	def validate_pin(self):
-		close_connection(self.parent.connection)
-		self.parent.connection = create_connection()
+		ok = check_valid_info(self.parent.connection)
 		# Call the API to validate the pin
 		ok = ask_pin_validation(self.parent.connection, [ord(c) for c in self.pin])
 		if ok:
@@ -490,6 +480,7 @@ class PINViewWidget(QWidget):
 			elif self.nextv == "charge":
 				self.parent.charge_view(self.parent.connection)
 			elif self.nextv == "transfer":
+				# Call backend API to get the transaction history
 				trans = get_transaction_history(self.parent.connection)
 				self.parent.transfer_view(trans)
 		else:
