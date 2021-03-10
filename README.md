@@ -9,6 +9,7 @@ This project aims to implement a cashless payment system for festivals based on 
 - GlobalPlatformPro command line tools in $PATH 
 ```console
 foo@bar:~$ echo "alias gpj='java -jar $HOME/path/to/GlobalPlatformPro/gp.jar'" >> ~/.bash_aliases
+foo@bar:~$ source ~/.bash_aliases
 ```
 
 ## Installation
@@ -18,8 +19,9 @@ Download the project
 foo@bar:~$ git clone https://github.com/luquf/paystival
 foo@bar:~$ cd paystival
 ```
-Activate the python virtual environment
+Create and activate the python virtual environment
 ```console
+foo@bar:~$ virtualenv env --python=python3
 foo@bar:~$ source env/bin/activate
 ```
 Install the dependancies
@@ -40,7 +42,7 @@ Run the flow machines graphical interface
 ```console
 foo@bar:~$ make client
 ```
-Run the cashier graphical interface
+Run the cashier machine graphical interface
 ```console
 foo@bar:~$ make cashier
 ```
